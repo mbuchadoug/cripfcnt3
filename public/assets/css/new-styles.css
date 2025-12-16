@@ -1,0 +1,272 @@
+/* Services Grid */
+.services-section {
+    padding: 80px 0;
+}
+
+.section-title {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 2.5rem;
+}
+
+.section-subtitle {
+    font-size: 1.2rem;
+    text-align: center;
+    color: #576CBC;
+    margin-bottom: 50px;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    padding: 20px;
+}
+
+/* Service Items */
+.service-item {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0, 1);
+    cursor: pointer;
+    position: relative;
+}
+
+.service-item:after {
+    content: 'View Details';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 207, 147, 0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+.service-item:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(11, 36, 71, 0.5);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+.service-item:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+}
+
+.service-item:hover:before {
+    opacity: 1;
+}
+
+.service-item:hover:after {
+    opacity: 1;
+}
+
+.service-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.service-item h4 {
+    padding: 20px;
+    margin: 0;
+    text-align: center;
+    font-size: 1.2rem;
+    color: #0B2447;
+    transition: all 0.3s ease;
+}
+
+/* Custom styles for Bootstrap modal */
+#serviceModal .modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+#serviceModal .modal-header {
+    border-bottom: 1px solid #eee;
+    padding: 1.5rem;
+}
+
+#serviceModal .modal-body {
+    padding: 1.5rem;
+}
+
+#serviceModal .modal-title {
+    color: #0B2447;
+    margin-bottom: 0;
+    font-size: 28px;
+    padding-right: 40px;
+}
+
+#serviceModal .btn-close {
+    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    transition: all 0.3s ease;
+    opacity: 1;
+}
+
+#serviceModal .btn-close:hover {
+    background-color: #e5e5e5;
+    transform: rotate(90deg);
+}
+
+#serviceModal ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#serviceModal ul li {
+    position: relative;
+    padding-left: 25px;
+    margin-bottom: 15px;
+    color: #555;
+    line-height: 1.6;
+}
+
+#serviceModal ul li:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #14cf93;
+}
+
+/* Custom Scrollbar for Modal */
+#serviceModal .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#serviceModal .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+#serviceModal .modal-body::-webkit-scrollbar-thumb {
+    background: #14cf93;
+    border-radius: 10px;
+}
+
+#serviceModal .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #0fa576;
+}
+
+/* Values Section Styles */
+.services-tab .item-box {
+    padding: 40px 20px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    text-align: center;
+    height: 100%;
+}
+
+.services-tab .item-box:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.services-tab .icon-box {
+    margin-bottom: 25px;
+}
+
+.services-tab .icon-box .icon {
+    font-size: 45px;
+    color: var(--main-color);
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.services-tab .item-box:hover .icon {
+    transform: scale(1.1);
+}
+
+.services-tab .cont h6 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.services-tab .cont p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #666;
+    margin: 0;
+}
+
+.services-tab .sub-title {
+    color: var(--main-color);
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@media (max-width: 991px) {
+    .services-tab .item-box {
+        margin-bottom: 30px;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .services-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+    }
+    
+    .section-subtitle {
+        font-size: 1rem;
+    }
+    
+    #serviceModal .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    #serviceModal .modal-header {
+        padding: 1rem;
+    }
+    
+    #serviceModal .modal-body {
+        padding: 1rem;
+    }
+
+    #serviceModal .modal-title {
+        font-size: 24px;
+    }
+    
+    .service-item:after {
+        font-size: 12px;
+        padding: 10px 16px;
+    }
+}

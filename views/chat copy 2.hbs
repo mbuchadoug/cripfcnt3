@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CRIPFCnt SCOI Intelligence Engine</title>
+    <style>
+      body {
+        font-family: "Inter", Arial, sans-serif;
+        background: #f6f7fb;
+        color: #222;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      header {
+        background: #222;
+        color: #fff;
+        width: 100%;
+        text-align: center;
+        padding: 15px 0;
+        font-size: 1.5em;
+        letter-spacing: 1px;
+      }
+
+      #chat-container {
+        margin-top: 30px;
+        width: 90%;
+        max-width: 800px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #messages {
+        padding: 20px;
+        height: 450px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        line-height: 1.5;
+      }
+
+      .user {
+        background: #d8e9ff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin: 8px 0;
+        text-align: right;
+      }
+
+      .ai {
+        background: #f1f1f1;
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin: 8px 0;
+        white-space: pre-wrap;
+      }
+
+      /* Highlighted SCOI formula block */
+      .ai-scoi {
+        background: #e6f7ff;
+        padding: 12px 15px;
+        border-left: 4px solid #0059ff;
+        border-radius: 6px;
+        margin: 8px 0;
+        font-weight: bold;
+        white-space: pre-wrap;
+        font-family: monospace;
+      }
+
+      #input-area {
+        display: flex;
+        border-top: 1px solid #ccc;
+        background: #fafafa;
+      }
+
+      input {
+        flex: 1;
+        border: none;
+        padding: 15px;
+        font-size: 1em;
+        outline: none;
+      }
+
+      button {
+        background: #0059ff;
+        color: #fff;
+        border: none;
+        padding: 0 20px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.3s;
+      }
+
+      button:hover {
+        background: #0043c5;
+      }
+
+      #status {
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #555;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>CRIPFCnt SCOI Intelligence Engine</header>
+
+    <div id="chat-container">
+      <div id="messages"></div>
+
+      <div id="input-area">
+        <input id="message" placeholder="Ask or calculate SCOI..." />
+        <button onclick="send()">Send</button>
+      </div>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+      const messagesEl = document.getElementById("messages");
+      const inputEl = document.getElementById("message");
+      const statusEl = document.getElementById("status");
+
+      async function send() {
+        const message = inputEl.value.trim();
+        if (!message) return;
+
+        appendMessage("user", message);
+        inputEl.value = "";
+        statusEl.textContent = "AI is typing...";
+
+        const response = await fetch("/api/chat-stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+
+        if (!response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        function typeWriter(text, el, speed = 15) {
+          let i = 0;
+          const interval = setInterval(() => {
+            if (i < text.length) {
+              el.innerHTML += text.charAt(i);
+              i++;
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+            } else {
+              clearInterval(interval);
+            }
+          }, speed);
+        }
+
+        let aiMessageEl = appendMessage("ai", "");
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop(); // keep unfinished chunk
+
+          for (let part of parts) {
+            if (part.startsWith("data: ")) {
+              const content = part.replace("data: ", "").trim();
+              if (!content || content === "[DONE]" || content === "[WAITING_FOR_QUALITATIVE_INPUT]") {
+                statusEl.textContent = "";
+                continue;
+              }
+
+              // Highlight SCOI formula blocks
+              if (content.toLowerCase().includes("scoi") && content.includes("=")) {
+                const scoiEl = document.createElement("div");
+                scoiEl.className = "ai-scoi";
+                typeWriter(content + "\n", scoiEl, 15);
+                messagesEl.appendChild(scoiEl);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              } else {
+                typeWriter(content + "\n", aiMessageEl, 15);
+              }
+            }
+          }
+        }
+
+        statusEl.textContent = "";
+      }
+
+      function appendMessage(type, text) {
+        const msg = document.createElement("div");
+        msg.className = type;
+        msg.innerHTML = text;
+        messagesEl.appendChild(msg);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return msg;
+      }
+
+      inputEl.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") send();
+      });
+    </script>
+  </body>
+</html>

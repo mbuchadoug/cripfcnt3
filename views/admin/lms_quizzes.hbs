@@ -1,0 +1,107 @@
+{{!-- views/admin/lms_quizzes.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{title}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:28px;background:#fff;color:#111}
+    .container{max-width:980px;margin:0 auto}
+    h1{font-size:28px;margin-bottom:8px}
+    .note{color:#666;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;margin-top:18px}
+    th,td{padding:10px;border:1px solid #eee;text-align:left;vertical-align:middle}
+    th{background:#f8f8f8}
+    .btn{display:inline-block;padding:8px 12px;border-radius:6px;background:#d9534f;color:#fff;font-weight:700;border:none;cursor:pointer}
+    .btn-secondary{display:inline-block;padding:8px 12px;border-radius:6px;background:#5bc0de;color:#fff;font-weight:700;border:none;cursor:pointer;text-decoration:none}
+    .muted{color:#777;font-size:14px}
+    form.inline{display:inline}
+    .success{padding:12px;border:1px solid #d6e9c6;background:#dff0d8;color:#3c763d;border-radius:6px;margin-bottom:16px}
+    .error{padding:12px;border:1px solid #f2dede;background:#f2dede;color:#a94442;border-radius:6px;margin-bottom:16px}
+    code{background:#f5f5f5;padding:4px 6px;border-radius:4px}
+  </style>
+  <script>
+    function confirmDelete(type, value, count) {
+      if (!confirm('Delete ' + count + ' question(s) with ' + type + ' = \"' + value + '\" ? This cannot be undone.')) return false;
+      // create a form and submit (POST)
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/admin/lms/quizzes/delete';
+      const t = document.createElement('input'); t.type='hidden'; t.name='type'; t.value=type; form.appendChild(t);
+      const v = document.createElement('input'); v.type='hidden'; v.name='value'; v.value=value; form.appendChild(v);
+      document.body.appendChild(form);
+      form.submit();
+      return true;
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Manage Quizzes</h1>
+    <p class="note">This page lists question groups discovered in the Question collection. You can delete all questions by <strong>source</strong> or by <strong>tag</strong>. Please back up the DB before deleting.</p>
+
+    {{!-- show deleted banner if present --}}
+    {{#if deleted}}
+      <div class="success">Deleted {{deleted}} question(s).</div>
+    {{/if}}
+
+    {{#if error}}
+      <div class="error"><strong>Error:</strong> {{{error}}}</div>
+    {{/if}}
+
+    <h3>By source</h3>
+    {{#if sources}}
+      {{#if sources.length}}
+        <table>
+          <thead><tr><th>Source</th><th>Count</th><th>Action</th></tr></thead>
+          <tbody>
+            {{#each sources}}
+              <tr>
+                <td><code>{{this.name}}</code></td>
+                <td>{{this.count}}</td>
+                <td>
+                  <button class="btn" onclick="confirmDelete('source','{{this.name}}',{{this.count}})">Delete</button>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      {{else}}
+        <p class="muted">No sources found.</p>
+      {{/if}}
+    {{else}}
+      <p class="muted">No sources found.</p>
+    {{/if}}
+
+    <h3 style="margin-top:20px">By tag</h3>
+    {{#if tags}}
+      {{#if tags.length}}
+        <table>
+          <thead><tr><th>Tag</th><th>Count</th><th>Action</th></tr></thead>
+          <tbody>
+            {{#each tags}}
+              <tr>
+                <td><code>{{this.name}}</code></td>
+                <td>{{this.count}}</td>
+                <td>
+                  <button class="btn" onclick="confirmDelete('tag','{{this.name}}',{{this.count}})">Delete</button>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      {{else}}
+        <p class="muted">No tags found.</p>
+      {{/if}}
+    {{else}}
+      <p class="muted">No tags found.</p>
+    {{/if}}
+
+    <p style="margin-top:18px">
+      <a class="btn-secondary" href="/admin/lms/import">Back to Import</a>
+      <a class="btn-secondary" href="/lms/quiz" style="margin-left:8px">Open Quiz UI</a>
+    </p>
+  </div>
+</body>
+</html>

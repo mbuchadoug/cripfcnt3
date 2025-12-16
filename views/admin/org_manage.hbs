@@ -1,0 +1,441 @@
+{{!-- admin/org_manage.hbs --}}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Manage {{org.name}}</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial;margin:18px;background:#fff;color:#111}
+    main{max-width:980px;margin:0 auto}
+    h1,h2{margin:14px 0}
+    form.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input,select,textarea{padding:8px;border:1px solid #ccc;border-radius:6px}
+    button{padding:8px 12px;border-radius:6px;background:#0b6fb7;color:#fff;border:none;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    table td, table th{border:1px solid #e6e6e6;padding:8px;text-align:left}
+    .muted{color:#666;font-size:13px}
+    .small{font-size:13px}
+    .inline-form{display:inline-block;margin:0}
+    .badge{display:inline-block;padding:4px 8px;border-radius:12px;background:#f1f1f1;color:#333}
+    .success{color:green}
+    .error{color:red}
+    .notice{margin-top:8px;color:#333}
+    .panel{padding:12px;border-radius:8px;background:#fafafa;border:1px solid #eee;margin-bottom:12px}
+    label.block{display:block;margin-bottom:8px}
+  </style>
+</head>
+<body>
+  {{> navbar}}
+  <main>
+    <h1>Manage {{org.name}}</h1>
+
+    <section>
+      <h2>Invites</h2>
+      <!-- AJAX invite form -->
+      <form class="row" data-ajax="invite" method="post" action="/admin/orgs/{{org.slug}}/invite">
+        <label style="flex:1">
+          Email:
+          <input name="email" placeholder="employee@example.com" required />
+        </label>
+
+        <label>
+          Role:
+          <select name="role">
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+          </select>
+        </label>
+
+        <button type="submit">Send Invite</button>
+      </form>
+
+      <div id="inviteFeedback" class="notice"></div>
+
+      <h3 style="margin-top:16px">Existing Invites</h3>
+      <ul id="invitesList">
+        {{#each invites}}
+          <li data-invite-id="{{this._id}}">
+            <span class="small">{{this.email}}</span>
+            <span class="muted"> | token: <code>{{this.token}}</code></span>
+            <span class="badge">{{#if this.used}}Used{{else}}Pending{{/if}}</span>
+            <span class="muted"> | created {{this.createdAt}}</span>
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+
+    <hr />
+
+    <section>
+      <h2>Members</h2>
+
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="membersTbody">
+        {{#each memberships}}
+          <tr data-user-id="{{this.user._id}}">
+            <td>{{this.user.fullName}}</td>
+            <td>{{this.user.email}}</td>
+            <td class="roleCell">{{this.role}}</td>
+            <td>
+              <!-- Promote to Manager -->
+              <form class="inline-form" data-ajax="member" method="post" action="/admin/orgs/{{../org.slug}}/members/{{this.user._id}}">
+                <input type="hidden" name="action" value="promote" />
+                <input type="hidden" name="role" value="manager" />
+                <button type="submit">Promote to Manager</button>
+              </form>
+
+              <!-- Demote to Employee -->
+              <form class="inline-form" data-ajax="member" method="post" action="/admin/orgs/{{../org.slug}}/members/{{this.user._id}}">
+                <input type="hidden" name="action" value="demote" />
+                <button type="submit">Demote</button>
+              </form>
+
+              <!-- Remove -->
+              <form class="inline-form" data-ajax="member" method="post" action="/admin/orgs/{{../org.slug}}/members/{{this.user._id}}">
+                <input type="hidden" name="action" value="remove" />
+                <button type="submit" style="background:#c43">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {{/each}}
+        </tbody>
+      </table>
+      <div id="memberFeedback" class="notice"></div>
+    </section>
+
+    <hr />
+
+    <section>
+      <h2>Modules</h2>
+      <a href="/admin/orgs/{{org.slug}}/modules">Manage Modules</a>
+      {{#if modules.length}}
+        <div style="margin-top:10px" class="small">
+          Modules: {{#each modules}}<span class="badge" style="margin-right:6px">{{this.title}} ({{this.slug}})</span>{{/each}}
+        </div>
+      {{else}}
+        <p class="muted small">No modules defined yet.</p>
+      {{/if}}
+    </section>
+
+    <hr/>
+
+    <section>
+     <h2>Assign Quiz (bulk)</h2>
+
+     <div class="panel">
+       <form id="assignForm" method="post" action="/admin/orgs/{{org.slug}}/assign-quiz">
+         <p>Select members to assign a quiz for the chosen module. This creates an exam instance per selected user.</p>
+
+         <label class="block">
+           Module:
+           <select id="module" name="module">
+             {{#each modules}}
+               <option value="{{this.slug}}">{{this.title}} ({{this.slug}})</option>
+             {{/each}}
+           </select>
+         </label>
+
+         <label class="block">
+           Users:
+           <select id="userIds" name="userIds" multiple size="6" required>
+             {{#each memberships}}
+               {{#if this.user}}
+                 <option value="{{this.user._id}}">{{this.user.email}} ({{this.role}})</option>
+               {{/if}}
+             {{/each}}
+           </select>
+           <p class="muted small">Hold Ctrl/Cmd to select multiple users.</p>
+         </label>
+
+         <label class="block">
+           <input type="checkbox" id="usePassage" name="usePassage" value="1" /> Assign a specific passage (passage quiz)
+         </label>
+
+         <label class="block" id="passageWrap" style="display:none">
+           Passage to assign:
+           <select id="passageSelect" name="passageId">
+             <option value="">-- choose passage --</option>
+             {{!-- server should provide `passages` array: each { _id, title, childCount, module, organization } --}}
+             {{#if passages}}
+               {{#each passages}}
+                 <option value="{{this._id}}" data-child-count="{{this.childCount}}" data-module="{{this.module}}">
+                   {{this.title}} ({{this.childCount}} q) {{#if this.organization}} — org{{/if}}
+                 </option>
+               {{/each}}
+             {{/if}}
+           </select>
+           <div class="muted small">When a passage is selected the Count will be set to the passage's child question count.</div>
+         </label>
+
+         <label class="block">
+           Count:
+           <input id="count" name="count" type="number" min="1" max="100" value="20">
+         </label>
+
+         <label class="block">
+           Expires (mins):
+           <input id="expiresMinutes" name="expiresMinutes" type="number" min="5" max="1440" value="60">
+         </label>
+
+         <div style="margin-top:8px">
+           <button id="assignBtn" type="submit">Assign Quiz</button>
+         </div>
+       </form>
+
+       <div id="assignResult" class="notice"></div>
+     </div>
+
+     <div class="panel">
+       <h3>Create Passage Quiz (for this organization)</h3>
+       <p class="muted">Paste passage text, then paste the child questions (each block separated by a blank line). The created passage will be saved with <code>organization</code> set to this company.</p>
+
+       <form id="createPassageForm" method="post" action="/admin/orgs/{{org.slug}}/passages">
+         <label class="block">
+           Title (short):
+           <input id="passageTitle" name="title" placeholder="Passage title (e.g. Responsibility passage 1)">
+         </label>
+
+         <label class="block">
+           Module:
+           <select id="passageModule" name="module">
+             {{#each modules}}
+               <option value="{{this.slug}}">{{this.title}} ({{this.slug}})</option>
+             {{/each}}
+           </select>
+         </label>
+
+         <label class="block">
+           Passage text:
+           <textarea id="passageText" name="passage" rows="6" style="width:100%" placeholder="Paste the passage here..." required></textarea>
+         </label>
+
+         <label class="block">
+           Child questions (plain text, same format as Import): 
+           <textarea id="passageQuestions" name="questions" rows="8" style="width:100%" placeholder="Question line\n a) option\n b) option\nCorrect Answer: a\n\nNext question..." required></textarea>
+         </label>
+
+         <div>
+           <button type="submit">Create Passage Quiz</button>
+         </div>
+       </form>
+
+       <div id="createPassageResult" class="notice"></div>
+     </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // helper: convert FormData -> object (handles multiple selects)
+    function formToObject(form) {
+      const fd = new FormData(form);
+      const obj = {};
+      for (const [k, v] of fd.entries()) {
+        if (obj[k] !== undefined) {
+          if (!Array.isArray(obj[k])) obj[k] = [obj[k]];
+          obj[k].push(v);
+        } else {
+          obj[k] = v;
+        }
+      }
+      // handle multi-select named "userIds"
+      if (form.querySelector('[name="userIds"]')) {
+        const select = form.querySelector('[name="userIds"]');
+        const vals = Array.from(select.selectedOptions).map(o => o.value);
+        obj.userIds = vals;
+      }
+      return obj;
+    }
+
+    // hide/show passage selector + auto count
+    const usePassageCb = document.getElementById('usePassage');
+    const passageWrap = document.getElementById('passageWrap');
+    const passageSelect = document.getElementById('passageSelect');
+    const countInput = document.getElementById('count');
+    const moduleSelect = document.getElementById('module');
+
+    usePassageCb.addEventListener('change', () => {
+      passageWrap.style.display = usePassageCb.checked ? 'block' : 'none';
+      if (!usePassageCb.checked) {
+        passageSelect.value = '';
+        countInput.removeAttribute('disabled');
+      }
+    });
+
+    passageSelect.addEventListener('change', () => {
+      const opt = passageSelect.selectedOptions[0];
+      if (!opt || !opt.value) {
+        countInput.removeAttribute('disabled');
+        return;
+      }
+      const childCount = parseInt(opt.dataset.childCount || '0', 10) || 0;
+      const passageModule = opt.dataset.module;
+      if (childCount > 0) {
+        countInput.value = childCount;
+        countInput.setAttribute('disabled','disabled');
+      } else {
+        countInput.removeAttribute('disabled');
+      }
+      // if passage has module, set the module select to match (optional convenience)
+      if (passageModule) {
+        for (const o of moduleSelect.options) {
+          if (o.value === passageModule) {
+            moduleSelect.value = passageModule;
+            break;
+          }
+        }
+      }
+    });
+
+    // AJAX invite form
+    document.querySelectorAll('form[data-ajax="invite"]').forEach(f => {
+      f.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const url = f.action;
+        const payload = formToObject(f);
+        try {
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json();
+          const fb = document.getElementById('inviteFeedback');
+          if (!resp.ok) {
+            fb.innerHTML = '<span class="error">Invite failed: ' + (data.error || 'unknown') + '</span>';
+            return;
+          }
+          fb.innerHTML = '<span class="success">Invite created. Token: <code>' + (data.token || '') + '</code></span>';
+          const ul = document.getElementById('invitesList');
+          const li = document.createElement('li');
+          li.innerHTML = `${payload.email} | token: <code>${data.token}</code> — <span class="badge">Pending</span>`;
+          ul.prepend(li);
+          f.reset();
+        } catch (e) {
+          console.error(e);
+          document.getElementById('inviteFeedback').innerHTML = '<span class="error">Invite failed (network)</span>';
+        }
+      });
+    });
+
+    // Member action buttons (promote/remove/demote)
+    document.querySelectorAll('form[data-ajax="member"]').forEach(f => {
+      f.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const url = f.action;
+        const payload = formToObject(f);
+        try {
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json();
+          const fb = document.getElementById('memberFeedback');
+          if (!resp.ok) {
+            fb.innerHTML = '<span class="error">Action failed: ' + (data.error || 'unknown') + '</span>';
+            return;
+          }
+          fb.innerHTML = '<span class="success">Action: ' + (data.action || 'ok') + '</span>';
+          const row = f.closest('tr');
+          if (data.action === 'removed') {
+            if (row) row.remove();
+          } else if (data.action === 'promoted' || data.action === 'demoted') {
+            if (row) {
+              const roleCell = row.querySelector('.roleCell');
+              if (roleCell) roleCell.textContent = data.role || (data.action === 'demoted' ? 'employee' : 'manager');
+            }
+          }
+        } catch (e) {
+          console.error(e);
+          document.getElementById('memberFeedback').innerHTML = '<span class="error">Action failed (network)</span>';
+        }
+      });
+    });
+
+    // Assign Quiz (AJAX) — includes optional passageId when chosen
+    document.getElementById('assignForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const form = ev.currentTarget;
+      const url = form.action;
+      const payload = formToObject(form);
+      // ensure userIds is array
+      if (!Array.isArray(payload.userIds)) payload.userIds = payload.userIds ? [payload.userIds] : [];
+      // If usePassage checked and passage selected, include passageId and set count to childCount
+      if (usePassageCb.checked) {
+        const sel = passageSelect.selectedOptions[0];
+        if (!sel || !sel.value) {
+          document.getElementById('assignResult').innerHTML = '<span class="error">Please choose a passage to assign.</span>';
+          return;
+        }
+        payload.passageId = sel.value;
+        payload.count = parseInt(sel.dataset.childCount || payload.count || '1', 10) || 1;
+      }
+      document.getElementById('assignResult').textContent = 'Assigning...';
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          document.getElementById('assignResult').innerHTML = '<span class="error">Assign failed: ' + (data.error || 'unknown') + '</span>';
+          return;
+        }
+        document.getElementById('assignResult').innerHTML = '<span class="success">Assigned ' + (data.assigned ? data.assigned.length : 0) + ' users.</span>';
+        console.log('assigned details', data.assigned);
+      } catch (e) {
+        console.error(e);
+        document.getElementById('assignResult').innerHTML = '<span class="error">Assign failed (network)</span>';
+      }
+    });
+
+    // Create Passage Quiz (AJAX) — posts to /admin/orgs/:slug/passages
+    document.getElementById('createPassageForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const form = ev.currentTarget;
+      const url = form.action;
+      const payload = formToObject(form);
+      // payload keys: title, module, passage, questions
+      document.getElementById('createPassageResult').textContent = 'Creating passage...';
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          document.getElementById('createPassageResult').innerHTML = '<span class="error">Create failed: ' + (data.error || 'unknown') + '</span>';
+          return;
+        }
+        document.getElementById('createPassageResult').innerHTML = '<span class="success">Passage created.</span>';
+        // If server returns new passage metadata, append to passageSelect
+        if (data.passage && data.passage._id) {
+          const opt = document.createElement('option');
+          opt.value = data.passage._id;
+          opt.textContent = (data.passage.title || 'Passage') + ' (' + (data.passage.childCount || 0) + ' q)';
+          opt.dataset.childCount = data.passage.childCount || 0;
+          opt.dataset.module = data.passage.module || '';
+          passageSelect.appendChild(opt);
+          // select it automatically and toggle UI
+          usePassageCb.checked = true;
+          passageWrap.style.display = 'block';
+          passageSelect.value = data.passage._id;
+          passageSelect.dispatchEvent(new Event('change'));
+        }
+        form.reset();
+      } catch (e) {
+        console.error(e);
+        document.getElementById('createPassageResult').innerHTML = '<span class="error">Create failed (network)</span>';
+      }
+    });
+
+  </script>
+</body>
+</html>

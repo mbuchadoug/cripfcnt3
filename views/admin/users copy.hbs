@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>{{title}}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:18px}
+    table{border-collapse:collapse;width:100%;margin-top:12px}
+    th,td{border:1px solid #e6eef8;padding:8px;text-align:left}
+    th{background:#f3f8ff}
+    .controls{display:flex;gap:8px;align-items:center}
+    .pager{margin-top:12px}
+    .small{font-size:0.9rem;color:#666}
+    a.btn{display:inline-block;padding:8px 12px;background:#0b63d6;color:#fff;border-radius:6px;text-decoration:none}
+  </style>
+</head>
+<body>
+  <h1>{{title}}</h1>
+
+  <div class="controls">
+    <form method="get" action="/admin/users" style="display:flex;gap:8px;align-items:center">
+      <input type="text" name="q" placeholder="Search name or email" value="{{q}}" />
+      <button type="submit">Search</button>
+      <a class="btn" href="/admin/users?format=csv{{#if q}}&q={{q}}{{/if}}">Download CSV</a>
+    </form>
+    <div style="margin-left:auto" class="small">Total: {{total}} users</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Provider</th>
+        <th>Google ID</th>
+        <th>Created</th>
+        <th>Last login</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each users}}
+        <tr>
+          <td>{{#if displayName}}{{displayName}}{{else}}{{firstName}} {{lastName}}{{/if}}</td>
+          <td>{{email}}</td>
+          <td>{{provider}}</td>
+          <td style="font-family:monospace">{{googleId}}</td>
+          <td>{{#if createdAt}}{{createdAt}}{{else}}-{{/if}}</td>
+          <td>{{#if lastLogin}}{{lastLogin}}{{else}}-{{/if}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="pager">
+    {{#if prev}}
+      <a href="/admin/users?page={{prev}}{{#if q}}&q={{q}}{{/if}}">← Prev</a>
+    {{/if}}
+    {{#if next}}
+      {{#if prev}} &nbsp; | &nbsp; {{/if}}
+      <a href="/admin/users?page={{next}}{{#if q}}&q={{q}}{{/if}}">Next →</a>
+    {{/if}}
+    <div class="small" style="margin-top:6px">Page {{page}} / {{pages}}</div>
+  </div>
+
+  <p class="small">Admin access is controlled by the <code>ADMIN_EMAILS</code> environment variable.</p>
+</body>
+</html>

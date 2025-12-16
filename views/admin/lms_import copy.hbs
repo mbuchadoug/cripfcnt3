@@ -1,0 +1,63 @@
+{{!-- views/admin/lms_import.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{title}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#f6f7f9;color:#111;padding:28px}
+    .card{max-width:900px;margin:18px auto;padding:20px;border-radius:10px;background:#fff;border:1px solid #e6e9ef}
+    h1{margin:0 0 12px 0}
+    textarea{width:100%;min-height:220px;padding:12px;font-family:monospace;border:1px solid #ddd;border-radius:6px}
+    input[type=file]{display:block;margin-top:8px}
+    .actions{margin-top:12px;display:flex;gap:8px;align-items:center}
+    .btn{display:inline-block;padding:10px 14px;border-radius:6px;background:#0b63d6;color:#fff;text-decoration:none}
+    .muted{color:#666;font-size:13px}
+    .result{margin-top:12px;padding:12px;background:#f3f7ff;border-radius:6px;border:1px solid #dbe9ff}
+    .errors{margin-top:12px;color:#b00020}
+    pre{background:#0f1720;color:#fff;padding:12px;border-radius:6px;overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="card" role="main">
+    <h1>{{title}}</h1>
+    <p class="muted">Upload a plain text file (.txt) containing multiple-choice questions in the format used in your specification (number, a) b) c) d), and a "Correct Answer:" line). Alternatively paste the content into the textarea and click Import.</p>
+
+    <form method="post" enctype="multipart/form-data" action="/admin/lms/import">
+      <label><strong>Upload .txt file</strong></label>
+      <input type="file" name="file" accept=".txt,text/plain" />
+      <div style="margin:12px 0;text-align:center">— or —</div>
+      <label><strong>Paste questions (text)</strong></label>
+      <textarea name="text" placeholder="Paste the question bank text here..."></textarea>
+
+      <div class="actions">
+        <button class="btn" type="submit">Import</button>
+        <a class="muted" href="/admin/lms/import">Reset</a>
+      </div>
+    </form>
+
+    {{#if result}}
+      <div class="result" role="status">
+        <div><strong>Import summary</strong></div>
+        <div>Parsed: {{result.parsed}}</div>
+        <div>Inserted: {{result.inserted}}</div>
+        {{#if result.errors}}
+          <div style="margin-top:8px"><strong>Errors:</strong></div>
+          <div class="errors">
+            <ul>
+              {{#each result.errors}}
+                <li>{{this.reason}} {{#if this.question}} — "{{this.question}}"{{/if}} {{#if this.block}}[block starts: {{this.block}}]{{/if}}</li>
+              {{/each}}
+            </ul>
+          </div>
+        {{/if}}
+      </div>
+    {{/if}}
+
+    <div style="margin-top:14px;color:#666;font-size:13px">
+      After import you can visit <a href="/admin/lms/questions">Manage Questions</a> or open the quiz UI at <a href="/lms/quiz">/lms/quiz</a>.
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,173 @@
+{{!-- views/lms/quiz.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Take Quiz — Responsibility LMS</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin:24px; background:#0b0b0b;color:#fff}
+    .container{max-width:920px;margin:0 auto}
+    .card{background:linear-gradient(180deg,#0f0f0f,#0b0b0b);padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    h1{margin:0 0 12px 0;color:#D4AF37}
+    .q{margin-top:16px;padding:12px;border-radius:8px;background:#0b0b0b;border:1px solid rgba(255,255,255,0.02)}
+    .choice{display:block;padding:8px;margin-top:8px;border-radius:8px;background:#0f1112;border:1px solid rgba(255,255,255,0.02);cursor:pointer}
+    .choice.selected{outline:2px solid rgba(212,175,55,0.9);background:linear-gradient(90deg, rgba(212,175,55,0.06), transparent)}
+    .btn{display:inline-block;padding:10px 14px;border-radius:8px;background:#D4AF37;color:#000;font-weight:800;border:none;cursor:pointer;margin-top:12px}
+    .muted{color:#9aa3ad;font-size:13px}
+    .score{margin-top:12px;padding:12px;border-radius:8px;background:linear-gradient(90deg,#051117,#07121a);border:1px solid rgba(255,255,255,0.02)}
+    .correct{background:linear-gradient(90deg,#06360b,#084d18)}
+    .wrong{background:linear-gradient(90deg,#3b0b0b,#611215)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Responsibility — Quick Quiz</h1>
+      <div class="muted">Each quiz pulls random questions from the bank. Answer the 5 questions below and submit to see your score.</div>
+
+      <div id="quizArea"></div>
+
+      <div style="margin-top:14px">
+        <button id="submitBtn" class="btn">Submit Answers</button>
+        <span id="status" class="muted" style="margin-left:12px"></span>
+      </div>
+
+      <div id="result" style="display:none" class="score"></div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const quizArea = document.getElementById('quizArea');
+      const submitBtn = document.getElementById('submitBtn');
+      const status = document.getElementById('status');
+      const result = document.getElementById('result');
+
+      let examId = null;
+      let series = []; // [{id,text,choices:[{text}],tags,difficulty}]
+      let answers = {}; // map qid -> index
+
+      async function loadQuiz(count=5){
+        status.textContent = "Loading quiz...";
+        try {
+          const res = await fetch('/api/lms/quiz?count=' + encodeURIComponent(count));
+          if (!res.ok) throw new Error('failed to fetch quiz');
+          const payload = await res.json();
+          examId = payload.examId;
+          series = payload.series || [];
+          renderQuiz(series);
+          status.textContent = "";
+        } catch (e) {
+          status.textContent = "Error loading quiz: " + (e.message || e);
+        }
+      }
+
+      function renderQuiz(list){
+        quizArea.innerHTML = "";
+        answers = {};
+        list.forEach((q, idx) => {
+          const div = document.createElement('div');
+          div.className = 'q';
+          const qnum = idx + 1;
+          const html = `<div style="font-size:15px;font-weight:700">Q${qnum}. ${escapeHtml(q.text)}</div>`;
+          div.innerHTML = html;
+          q.choices.forEach((c, ci) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'choice';
+            btn.innerText = c.text;
+            btn.addEventListener('click', () => {
+              // mark selected
+              const parent = btn.parentElement;
+              parent.querySelectorAll('.choice').forEach(n => n.classList.remove('selected'));
+              btn.classList.add('selected');
+              answers[q.id] = ci;
+            });
+            div.appendChild(btn);
+          });
+          quizArea.appendChild(div);
+        });
+      }
+
+      submitBtn.addEventListener('click', async () => {
+        const keys = Object.keys(answers);
+        if (keys.length < series.length) {
+          if (!confirm(`You answered ${keys.length} of ${series.length} questions. Submit anyway?`)) return;
+        }
+        // build answers array
+        const payload = { examId, answers: [] };
+        for (const q of series) {
+          payload.answers.push({
+            questionId: q.id,
+            choiceIndex: answers[q.id] ?? null
+          });
+        }
+
+        // submit
+        submitBtn.disabled = true;
+        status.textContent = "Submitting answers...";
+        try {
+          const res = await fetch('/api/lms/quiz/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const t = await res.json().catch(()=>null);
+            throw new Error((t && t.error) ? t.error : 'submit failed');
+          }
+          const out = await res.json();
+          showResult(out);
+          status.textContent = "";
+        } catch (e) {
+          status.textContent = "Error: " + (e.message || e);
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+
+      function showResult(resp){
+        result.style.display = 'block';
+        result.innerHTML = `<div style="font-weight:800;font-size:16px">Score: ${resp.score} / ${resp.total} — ${resp.percentage}%</div>
+                            <div style="margin-top:8px">${resp.passed ? '<strong style="color:#bfffb1">PASSED</strong>' : '<strong style="color:#ffb1b1">FAILED</strong>'} (pass ${resp.passThreshold}%)</div>
+                            <div style="margin-top:10px">Detailed feedback below:</div>`;
+
+        // show per-question feedback
+        const list = document.createElement('div');
+        list.style.marginTop = '12px';
+        resp.details.forEach(d => {
+          const q = series.find(s => s.id === d.questionId);
+          const block = document.createElement('div');
+          block.style.marginTop = '10px';
+          block.innerHTML = `<div style="font-weight:700">${escapeHtml(q ? q.text : d.questionId)}</div>`;
+          // choices with marking
+          (q ? q.choices : []).forEach((c, i) => {
+            const el = document.createElement('div');
+            el.style.padding = '6px';
+            el.style.borderRadius = '6px';
+            el.style.marginTop = '6px';
+            el.style.background = '#0e0e0f';
+            el.style.border = '1px solid rgba(255,255,255,0.02)';
+            if (i === d.correctIndex) el.classList.add('correct');
+            if (i === d.yourIndex && !d.correct) el.classList.add('wrong');
+            el.innerText = (i+1) + '. ' + c.text;
+            block.appendChild(el);
+          });
+          list.appendChild(block);
+        });
+
+        result.appendChild(list);
+      }
+
+      function escapeHtml(s){
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+      }
+
+      // initial load
+      loadQuiz(5);
+    })();
+  </script>
+</body>
+</html>

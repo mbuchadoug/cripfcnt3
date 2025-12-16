@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Create Module</title></head>
+<body>
+  {{> navbar}}
+  <main>
+    <h1>Create module for {{org.name}}</h1>
+    <form method="post" action="/admin/orgs/{{org.slug}}/modules/create">
+      <label>Slug (e.g. safety-1):<br><input name="slug" required></label><br><br>
+      <label>Title:<br><input name="title" required></label><br><br>
+      <label>Description:<br><textarea name="description"></textarea></label><br><br>
+      <button type="submit">Create</button>
+    </form>
+  </main>
+</body>
+</html>

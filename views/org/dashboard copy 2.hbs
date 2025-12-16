@@ -1,0 +1,113 @@
+{{!-- views/org/dashboard.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{org.name}} — Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/css/site.css" /> {{!-- optional if you have a main css --}}
+</head>
+<body>
+  {{> navbar}}
+
+  <main class="container py-4">
+    <header class="mb-4">
+      <h1 class="h3">{{org.name}} — Dashboard</h1>
+      {{#if org.description}}
+        <p class="text-muted">{{org.description}}</p>
+      {{/if}}
+
+      <p>
+        You are a
+        <strong>{{membership.role}}</strong>
+        in this organization.
+      </p>
+    </header>
+
+    {{!-- ================= MODULES & QUIZZES ================= --}}
+    <section class="mb-5">
+      <h2 class="h4">Modules</h2>
+
+      {{#if modules.length}}
+        {{#each modules}}
+          <article class="mb-4 p-3 border rounded module-block">
+            <h3 class="h5 mb-1">{{this.title}}</h3>
+            <p class="mb-2">
+              <small>Module slug: <code>{{this.slug}}</code></small>
+            </p>
+
+            {{!-- QUIZZES FOR THIS MODULE, grouped in controller as quizzesByModule --}}
+            {{#with (lookup ../quizzesByModule this.slug) as |quizzes|}}
+              {{#if quizzes}}
+                <h4 class="h6 mt-3">Assigned quizzes</h4>
+                <ul class="list-unstyled mb-2">
+                  {{#each quizzes}}
+                    <li class="mb-1">
+                      <strong>Status:</strong> {{status}}
+                      {{#if expiresAt}}
+                        &nbsp;•&nbsp;
+                        <strong>Expires:</strong> {{expiresAt}}
+                      {{/if}}
+
+                      {{#if finishedAt}}
+                        &nbsp;•&nbsp;
+                        <strong>Completed:</strong> {{finishedAt}}
+                      {{/if}}
+
+                      {{!-- Only show link if quiz is not completed/expired --}}
+                      {{#unless (or (eq status "completed") (eq status "expired"))}}
+                        &nbsp;•&nbsp;
+                        <a href="/org/{{../../org.slug}}/quiz?examId={{examId}}">
+                          Open quiz
+                        </a>
+                      {{/unless}}
+                    </li>
+                  {{/each}}
+                </ul>
+              {{else}}
+                <p class="text-muted mb-2">
+                  No quizzes assigned yet for this module.
+                </p>
+              {{/if}}
+            {{/with}}
+
+            {{!-- Optional: generic "start new quiz by module" link --}}
+            <p class="mb-0">
+              <a href="/org/{{../org.slug}}/quiz?module={{this.slug}}">
+                Start a new quiz for this module
+              </a>
+            </p>
+          </article>
+        {{/each}}
+      {{else}}
+        <p>No modules defined yet. Ask your org admin to create modules.</p>
+      {{/if}}
+    </section>
+
+    {{!-- ============== MANAGER / ADMIN SECTION ============== --}}
+    {{#if (or (eq membership.role "manager") (eq membership.role "admin"))}}
+      <section class="mb-4">
+        <h2 class="h4">Manager tools</h2>
+        <ul>
+          <li>
+            <a href="/admin/orgs/{{org.slug}}/manage">
+              Manage members, invites & modules
+            </a>
+          </li>
+          <li>
+            <a href="/admin/orgs/{{org.slug}}/assign-quiz">
+              Assign quizzes to team members
+            </a>
+          </li>
+          <li>
+            <a href="/admin/orgs/{{org.slug}}/reports/attempts.csv">
+              Download quiz results (CSV)
+            </a>
+          </li>
+        </ul>
+      </section>
+    {{/if}}
+
+  </main>
+</body>
+</html>

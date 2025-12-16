@@ -1,0 +1,75 @@
+{{!-- views/admin/lms_import.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Import LMS Questions</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,system-ui,Arial;margin:18px;background:#fff;color:#111}
+    .wrap{max-width:980px;margin:0 auto}
+    textarea{width:100%;height:360px;font-family:monospace;padding:12px;border:1px solid #ccc;border-radius:6px}
+    .note{color:#666;margin-bottom:10px}
+    .btn{display:inline-block;padding:10px 14px;border-radius:6px;background:#0b6fb7;color:#fff;border:none;cursor:pointer}
+    .secondary{background:#eee;color:#222;border:1px solid #ccc}
+    .links{margin-top:12px}
+    pre.block{background:#f7f7f7;border:1px solid #e6e6e6;padding:12px;border-radius:6px;white-space:pre-wrap}
+    select,input[type=text]{padding:8px;width:100%;border-radius:6px;border:1px solid #ccc;margin-top:6px;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Import LMS Questions</h1>
+
+    <p class="note">
+      Upload a plain text file (.txt) or paste quiz questions.  
+      Now you can categorize questions by <strong>Organization</strong> and <strong>Module</strong>.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" action="/admin/lms/import">
+
+      {{!-- ORGANIZATION DROPDOWN --}}
+      <label><strong>Organization</strong></label>
+      <select name="orgId">
+        <option value="">Global (all organizations)</option>
+        {{#each organizations}}
+          <option value="{{this._id}}">{{this.name}}</option>
+        {{/each}}
+      </select>
+
+      {{!-- MODULE --}}
+      <label><strong>Module</strong></label>
+      <input type="text" name="module" placeholder="e.g. safety, hr, onboarding, etc." required />
+
+      <div style="margin-bottom:12px; margin-top:16px;">
+        <label><strong>Upload .txt file</strong></label><br/>
+        <input type="file" name="file" accept=".txt" />
+      </div>
+
+      <div style="text-align:center;margin:8px 0;color:#888">— or —</div>
+
+      <div>
+        <label><strong>Paste questions (text)</strong></label>
+        <textarea name="text" placeholder="Paste the quiz text here...">{{{text}}}</textarea>
+      </div>
+
+      <div style="margin-top:10px">
+        <label style="font-weight:700">
+          <input type="checkbox" name="save" value="1" /> Save parsed questions to database
+        </label>
+      </div>
+
+      <div style="margin-top:14px">
+        <button class="btn" type="submit">Import</button>
+        <button class="btn secondary" type="reset" style="margin-left:8px">Reset</button>
+      </div>
+    </form>
+
+    <div class="links">
+      <p>
+        After importing you can visit <a href="/admin/lms/questions">Manage Questions</a> or test quizzes at <a href="/lms/quiz">/lms/quiz</a>.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

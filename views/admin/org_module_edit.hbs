@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Edit Module</title></head>
+<body>
+  {{> navbar}}
+  <main>
+    <h1>Edit module {{module.slug}} | {{org.name}}</h1>
+    <form method="post" action="/admin/orgs/{{org.slug}}/modules/{{module.slug}}/edit">
+      <label>Title:<br><input name="title" value="{{module.title}}" required></label><br><br>
+      <label>Description:<br><textarea name="description">{{module.description}}</textarea></label><br><br>
+      <button type="submit">Save</button>
+    </form>
+  </main>
+</body>
+</html>

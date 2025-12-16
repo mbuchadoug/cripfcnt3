@@ -1,0 +1,63 @@
+{{!-- views/org/dashboard.hbs --}}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{org.name}} — Dashboard</title>
+</head>
+<body>
+  {{> navbar}}
+
+  <main>
+    <h1>{{org.name}} — Dashboard</h1>
+    <p>{{org.description}}</p>
+    <p>You are a <strong>{{membership.role}}</strong> in this organization.</p>
+
+    <section>
+      <h2>Modules</h2>
+
+      {{#if modules.length}}
+        {{#each modules}}
+          <article style="margin-bottom: 2rem;">
+            <h3>{{this.title}}</h3>
+            <p>Module slug: <code>{{this.slug}}</code></p>
+
+            <p>
+              <a href="/org/{{../org.slug}}/modules/{{this.slug}}">
+                View learning material
+              </a>
+            </p>
+
+            <p>
+              <a href="/lms/quiz?module={{this.slug}}&org={{../org.slug}}">
+                Start a new quiz for this module
+              </a>
+            </p>
+
+            {{!-- Assigned quizzes for this module --}}
+            {{#with (lookup ../quizzesByModule this.slug)}}
+              {{#if this.length}}
+                <h4>Assigned quizzes</h4>
+                <ul>
+                  {{#each this}}
+                    <li>
+                      Status: {{status}}
+                      {{#if expiresAt}} • Expires: {{expiresAt}}{{/if}}
+                      {{#if finishedAt}} • Finished: {{finishedAt}}{{/if}}
+
+                      • <a href="{{openUrl}}">Open quiz</a>
+                      {{!-- openUrl already includes /org/{{org.slug}}/quiz?examId=... --}}
+                    </li>
+                  {{/each}}
+                </ul>
+              {{/if}}
+            {{/with}}
+          </article>
+        {{/each}}
+      {{else}}
+        <p>No modules defined yet. Ask your org admin to create modules.</p>
+      {{/if}}
+    </section>
+  </main>
+</body>
+</html>

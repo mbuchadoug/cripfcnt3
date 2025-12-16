@@ -1,0 +1,331 @@
+{{!-- views/lms/quiz.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{displayModule}} — {{#if isOrg}}{{orgSlug}} Quiz{{else}}Quick Quiz{{/if}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --card:#0f0f0f;
+      --muted:#9aa3ad;
+      --gold:#D4AF37;
+      --panel:#0c0c0c;
+      --choice-bg:#0f1112;
+      --choice-border: rgba(255,255,255,0.03);
+      --selected-outline: rgba(212,175,55,0.9);
+      --correct: linear-gradient(90deg,#06360b,#084d18);
+      --wrong: linear-gradient(90deg,#3b0b0b,#611215);
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial}
+    .page{max-width:980px;margin:28px auto;padding:18px}
+    .card{background:linear-gradient(180deg,var(--card),#070707);padding:22px;border-radius:12px;border:1px solid rgba(255,255,255,0.02);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    h1{margin:0 0 8px 0;color:var(--gold);font-size:34px}
+    .muted{color:var(--muted);font-size:14px;margin-bottom:10px}
+
+    .q{margin-top:18px;padding:18px;border-radius:10px;background:var(--panel);border:1px solid rgba(255,255,255,0.02)}
+    .q-head{font-weight:800;font-size:18px;margin-bottom:12px}
+    .choices{display:flex;flex-direction:column;gap:10px}
+    .choice{
+      display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;background:var(--choice-bg);
+      border:1px solid var(--choice-border);cursor:pointer;transition:all .12s ease;
+      user-select:none;
+    }
+    .choice:hover{transform:translateY(-2px)}
+    .choice .badge{
+      min-width:36px;height:36px;border-radius:10px;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-weight:800;
+      color:var(--muted);font-size:14px;border:1px solid rgba(255,255,255,0.03)
+    }
+    .choice .text{flex:1;color:rgba(255,255,255,0.92)}
+    .choice.selected{outline:3px solid var(--selected-outline);background:linear-gradient(90deg, rgba(212,175,55,0.04), transparent)}
+    .choice.correct{background:var(--correct);border-color:rgba(0,0,0,0.3)}
+    .choice.wrong{background:var(--wrong);border-color:rgba(0,0,0,0.3)}
+
+    .controls{display:flex;align-items:center;gap:12px;margin-top:16px}
+    .btn{display:inline-block;padding:10px 16px;border-radius:10px;background:var(--gold);color:#000;font-weight:800;border:none;cursor:pointer}
+    .small{padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    .score{margin-top:14px;padding:12px;border-radius:8px;background:linear-gradient(90deg,#051117,#07121a);border:1px solid rgba(255,255,255,0.02)}
+    .detail-block{margin-top:10px;padding:12px;border-radius:8px;background:#0b0b0b;border:1px solid rgba(255,255,255,0.02)}
+
+    @media (max-width:720px){
+      .page{padding:12px}
+      h1{font-size:28px}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card" role="main" aria-labelledby="quiz-title">
+      <h1 id="quiz-title">
+        {{displayModule}}
+        {{#if isOrg}} — {{orgSlug}} Quiz{{else}} — Quick Quiz{{/if}}
+      </h1>
+
+      <div class="muted">
+        {{#if isOrg}}
+          You’re taking a module quiz for <strong>{{orgSlug}}</strong>. You’ll receive {{quizCount}} questions for this module.
+        {{else}}
+          Each quiz pulls random questions from the bank. Answer {{quizCount}} questions below and submit to see your score.
+        {{/if}}
+      </div>
+
+      <div id="quizArea" aria-live="polite"></div>
+
+      <div class="controls">
+        <button id="submitBtn" class="btn">Submit Answers</button>
+        <button id="reloadBtn" class="small" type="button">Reload Quiz</button>
+        <span id="status" class="muted" aria-atomic="true"></span>
+      </div>
+
+      <div id="result" style="display:none" class="score" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const QUIZ_COUNT = Number({{quizCount}});
+    const MODULE_KEY = "{{moduleKey}}";
+    const ORG_SLUG = "{{orgSlug}}";
+    const IS_ORG = {{#if isOrg}}true{{else}}false{{/if}};
+
+    const quizArea = document.getElementById('quizArea');
+    const submitBtn = document.getElementById('submitBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+
+    let examId = null;
+    let series = [];
+    let answers = {};
+
+    function letterForIndex(i){ return ['a','b','c','d','e'][i] || String.fromCharCode(97+i); }
+    function normalizeChoice(c){
+      if (!c) return { text: '' };
+      if (typeof c === 'string') return { text: c };
+      if (typeof c.text === 'string') return { text: c.text };
+      return { text: String(c) };
+    }
+
+    function repairBlock(q){
+      if (!q || typeof q !== 'object') return q;
+      const out = Object.assign({}, q);
+      out.choices = (out.choices || []).map(normalizeChoice);
+      return out;
+    }
+
+    function renderQuiz(list){
+      quizArea.innerHTML = '';
+      answers = {};
+      if (!Array.isArray(list) || list.length === 0) {
+        quizArea.innerHTML = '<div class="muted">No quiz questions found. Please import questions in Admin.</div>';
+        return;
+      }
+
+      list.forEach((rawQ, idx) => {
+        const q = repairBlock(rawQ);
+        const qid = q.id || q._id || `q${idx}`;
+        const choices = (q.choices || []).map(normalizeChoice);
+
+        const block = document.createElement('div');
+        block.className = 'q';
+        const qnum = idx + 1;
+        const qHeadText = q.text && String(q.text).trim() ? escapeHtml(q.text.trim()) : `Q${qnum}. Choose the best option`;
+        const head = document.createElement('div');
+        head.className = 'q-head';
+        head.innerHTML = `<span style="font-weight:800">Q${qnum}.</span> ${qHeadText}`;
+        block.appendChild(head);
+
+        const choicesWrap = document.createElement('div');
+        choicesWrap.className = 'choices';
+
+        if (!choices.length) {
+          const p = document.createElement('div');
+          p.className = 'muted';
+          p.textContent = 'No choices available for this question.';
+          choicesWrap.appendChild(p);
+        } else {
+          choices.forEach((c, ci) => {
+            const btn = document.createElement('div');
+            btn.className = 'choice';
+            btn.setAttribute('role','button');
+            btn.setAttribute('tabindex','0');
+            btn.dataset.qid = qid;
+            btn.dataset.index = ci;
+
+            const badge = document.createElement('div');
+            badge.className = 'badge';
+            badge.textContent = letterForIndex(ci);
+
+            const txt = document.createElement('div');
+            txt.className = 'text';
+            txt.textContent = c.text || '';
+
+            btn.appendChild(badge);
+            btn.appendChild(txt);
+
+            btn.addEventListener('click', () => {
+              choicesWrap.querySelectorAll('.choice').forEach(n => n.classList.remove('selected'));
+              btn.classList.add('selected');
+              answers[qid] = ci;
+            });
+            btn.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                btn.click();
+              }
+            });
+
+            choicesWrap.appendChild(btn);
+          });
+        }
+
+        block.appendChild(choicesWrap);
+        quizArea.appendChild(block);
+
+        q.id = qid;
+        q.choices = choices;
+        series[idx] = q;
+      });
+    }
+
+    async function loadQuiz(count){
+      status.textContent = 'Loading quiz...';
+      try {
+        const params = new URLSearchParams();
+        params.set('count', count);
+        if (MODULE_KEY) params.set('module', MODULE_KEY);
+        if (IS_ORG && ORG_SLUG) params.set('org', ORG_SLUG);
+
+        const res = await fetch('/api/lms/quiz?' + params.toString(), { cache: 'no-store' });
+        if (!res.ok) {
+          const t = await res.text().catch(()=>null);
+          throw new Error(t || res.statusText || 'failed to fetch quiz');
+        }
+        const payload = await res.json();
+        examId = payload.examId || null;
+        const rawSeries = payload.series || payload.questions || payload.items || [];
+        if (!Array.isArray(rawSeries)) throw new Error('unexpected quiz format');
+        series = rawSeries.map(s => Object.assign({}, s));
+        renderQuiz(series);
+        status.textContent = '';
+      } catch (e) {
+        status.textContent = 'Error loading quiz: ' + (e.message || e);
+        quizArea.innerHTML = '<div class="muted">Unable to load quiz questions. Check that questions were imported and that /api/lms/quiz returns data.</div>';
+      }
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      const answered = Object.keys(answers).length;
+      if (answered < series.length) {
+        if (!confirm(`You answered ${answered} of ${series.length}. Submit anyway?`)) return;
+      }
+
+      const payload = { examId, answers: [] };
+      for (const s of series) {
+        payload.answers.push({
+          questionId: s.id || s._id || null,
+          choiceIndex: typeof answers[s.id || s._id] === 'number' ? answers[s.id || s._id] : null
+        });
+      }
+
+      submitBtn.disabled = true;
+      status.textContent = 'Submitting answers...';
+      try {
+        const res = await fetch('/api/lms/quiz/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const t = await res.json().catch(()=>null);
+          throw new Error((t && (t.error || t.message)) || 'submit failed');
+        }
+        const out = await res.json();
+        showResult(out);
+        status.textContent = '';
+      } catch (err) {
+        status.textContent = 'Error: ' + (err.message || err);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    reloadBtn.addEventListener('click', () => loadQuiz(QUIZ_COUNT));
+
+       function showResult(resp){
+      // show top summary
+      result.style.display = 'block';
+      result.innerHTML = `<div style="font-weight:800;font-size:16px">Score: ${resp.score} / ${resp.total} — ${resp.percentage}%</div>
+                          <div style="margin-top:8px">${resp.passed ? '<strong style="color:#bfffb1">PASSED</strong>' : '<strong style="color:#ffb1b1">FAILED</strong>'} (pass ${resp.passThreshold}%)</div>
+                          <div style="margin-top:10px">Detailed feedback below:</div>`;
+
+      // 1) clear any old markings on the main quiz choices
+      document.querySelectorAll('.choice').forEach(n => n.classList.remove('correct','wrong'));
+
+      // 2) mark correct / wrong on the MAIN quiz options
+      (resp.details || []).forEach(d => {
+        const qid = String(d.questionId || '');
+        const correctIndex = (typeof d.correctIndex === 'number') ? d.correctIndex : null;
+        const yourIndex = (typeof d.yourIndex === 'number') ? d.yourIndex : null;
+
+        if (correctIndex !== null) {
+          const correctEl = document.querySelector(`.choice[data-qid="${qid}"][data-index="${correctIndex}"]`);
+          if (correctEl) correctEl.classList.add('correct');
+        }
+
+        if (yourIndex !== null && yourIndex !== correctIndex) {
+          const wrongEl = document.querySelector(`.choice[data-qid="${qid}"][data-index="${yourIndex}"]`);
+          if (wrongEl) wrongEl.classList.add('wrong');
+        }
+      });
+
+      // 3) build detailed feedback list under the score
+      const list = document.createElement('div');
+      list.style.marginTop = '12px';
+
+      (resp.details || []).forEach(d => {
+        const q = series.find(s => (s.id || s._id) === d.questionId) || series.find(s => s.id === d.questionId) || null;
+        const header = document.createElement('div');
+        header.className = 'detail-block';
+        const qText = q ? q.text : d.questionId;
+        header.innerHTML = `<div style="font-weight:700">${escapeHtml(qText)}</div>`;
+
+        const choicesContainer = document.createElement('div');
+        choicesContainer.style.marginTop = '8px';
+        (q && q.choices ? q.choices : (d.choices || [])).forEach((c,i) => {
+          const el = document.createElement('div');
+          el.style.padding = '8px';
+          el.style.borderRadius = '8px';
+          el.style.marginTop = '6px';
+          el.style.background = '#0e0e0f';
+          el.style.border = '1px solid rgba(255,255,255,0.02)';
+          el.textContent = `${letterForIndex(i)}. ${ (typeof c === 'string') ? c : (c.text || '') }`;
+
+          // add same visual hints in the feedback block if you want
+          if (i === d.correctIndex) el.classList.add('correct');
+          if (i === d.yourIndex && !d.correct) el.classList.add('wrong');
+
+          choicesContainer.appendChild(el);
+        });
+        header.appendChild(choicesContainer);
+        list.appendChild(header);
+      });
+
+      result.appendChild(list);
+      result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function escapeHtml(s){
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    // initial load
+    loadQuiz(QUIZ_COUNT);
+  })();
+  </script>
+</body>
+</html>

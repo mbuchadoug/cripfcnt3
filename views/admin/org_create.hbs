@@ -1,0 +1,14 @@
+<h1>Create Organization</h1>
+
+<form method="post" action="/admin/orgs/create">
+  <label>Name</label><br>
+  <input name="name" required><br><br>
+
+  <label>Slug (unique URL ID)</label><br>
+  <input name="slug" required><br><br>
+
+  <label>Description</label><br>
+  <textarea name="description"></textarea><br><br>
+
+  <button type="submit">Create</button>
+</form>

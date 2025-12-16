@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>
+    {{#if orgSlug}}
+      {{module}} | {{orgSlug}} Quiz
+    {{else}}
+      Responsibility (demo) | Quick Quiz
+    {{/if}}
+  </title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --card:#0f0f0f;
+      --muted:#9aa3ad;
+      --gold:#D4AF37;
+      --panel:#0c0c0c;
+      --choice-bg:#0f1112;
+      --choice-border: rgba(255,255,255,0.03);
+      --selected-outline: rgba(212,175,55,0.9);
+      --correct-grad: linear-gradient(90deg,#06360b,#084d18);
+      --wrong-grad: linear-gradient(90deg,#3b0b0b,#611215);
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial}
+    .page{max-width:980px;margin:28px auto;padding:18px}
+    .card{background:linear-gradient(180deg,var(--card),#070707);padding:22px;border-radius:12px;border:1px solid rgba(255,255,255,0.02);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    h1{margin:0 0 8px 0;color:var(--gold);font-size:34px}
+    .muted{color:var(--muted);font-size:14px;margin-bottom:10px}
+
+    .q{margin-top:18px;padding:18px;border-radius:10px;background:var(--panel);border:1px solid rgba(255,255,255,0.02)}
+    .q-head{font-weight:800;font-size:18px;margin-bottom:12px}
+    .choices{display:flex;flex-direction:column;gap:10px}
+    .choice{
+      display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;background:var(--choice-bg);
+      border:1px solid var(--choice-border);cursor:pointer;transition:all .12s ease;
+      user-select:none;
+    }
+    .choice:hover{transform:translateY(-2px)}
+    .choice .badge{
+      min-width:36px;height:36px;border-radius:10px;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-weight:800;
+      color:var(--muted);font-size:14px;border:1px solid rgba(255,255,255,0.03)
+    }
+    .choice .text{flex:1;color:rgba(255,255,255,0.92)}
+    .choice.selected{outline:3px solid var(--selected-outline);background:linear-gradient(90deg, rgba(212,175,55,0.04), transparent)}
+
+    .controls{display:flex;align-items:center;gap:12px;margin-top:16px}
+    .btn{display:inline-block;padding:10px 16px;border-radius:10px;background:var(--gold);color:#000;font-weight:800;border:none;cursor:pointer}
+    .small{padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    .score{margin-top:14px;padding:12px;border-radius:8px;background:linear-gradient(90deg,#051117,#07121a);border:1px solid rgba(255,255,255,0.02)}
+    .detail-block{margin-top:10px;padding:12px;border-radius:8px;background:#0b0b0b;border:1px solid rgba(255,255,255,0.02)}
+
+    /* feedback block colours */
+    .fb-question{margin-top:12px}
+    .fb-qtitle{font-weight:700;margin-bottom:8px}
+    .fb-choice{
+      display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;margin-top:8px;
+      background:#0e0e0f;border:1px solid rgba(255,255,255,0.02);color:#ddd;
+    }
+    .fb-label{
+      min-width:28px;text-align:center;padding:6px;border-radius:6px;
+      background:rgba(0,0,0,0.25);font-weight:800;color:#ccc;
+    }
+    .fb-choice.correct{
+      background:var(--correct-grad);
+      color:#e6ffea;
+      border-color: rgba(0,150,50,0.25);
+      font-weight:700;
+    }
+    .fb-choice.wrong{
+      background:var(--wrong-grad);
+      color:#ffdada;
+      border-color: rgba(200,30,30,0.25);
+      font-weight:700;
+    }
+
+    .errorText{color:#ff9b9b;margin-left:6px}
+
+    @media (max-width:720px){
+      .page{padding:12px}
+      h1{font-size:28px}
+    }
+  </style>
+</head>
+<body
+  data-quiz-count="{{quizCount}}"
+  data-module="{{module}}"
+  data-module-key="{{moduleKey}}"
+  data-org="{{orgSlug}}"
+  data-exam-id="{{examId}}"
+>
+
+  <div class="page">
+    <div class="card" role="main" aria-labelledby="quiz-title">
+      <h1 id="quiz-title">
+        {{#if orgSlug}}
+          {{module}} | {{orgSlug}} Quiz
+        {{else}}
+          Responsibility (demo) | Quick Quiz
+        {{/if}}
+      </h1>
+
+      <div class="muted" id="mutedInfo">
+        {{#if orgSlug}}
+          You’re taking a module quiz for <strong>{{orgSlug}}</strong>. 
+        {{else}}
+          Each quiz pulls random questions from the bank. Answer {{quizCount}} questions below and submit to see your score.
+        {{/if}}
+      </div>
+
+      <div id="quizArea" aria-live="polite"></div>
+
+      <div class="controls">
+        <button id="submitBtn" class="btn">Submit Answers</button>
+        <button id="reloadBtn" class="small" type="button">Reload Quiz</button>
+        <span id="status" class="muted" aria-atomic="true"></span>
+        <span id="errorMsg" class="errorText" aria-live="assertive"></span>
+      </div>
+
+      <div id="result" style="display:none" class="score" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const quizArea = document.getElementById('quizArea');
+    const submitBtn = document.getElementById('submitBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const status = document.getElementById('status');
+    const errorMsg = document.getElementById('errorMsg');
+    const result = document.getElementById('result');
+    const mutedInfo = document.getElementById('mutedInfo');
+
+    const body = document.body;
+    const DEFAULT_COUNT = Number(body.dataset.quizCount || '5') || 5;
+    const MODULE_KEY = body.dataset.moduleKey || "";
+    const ORG_SLUG = body.dataset.org || "";
+    const INITIAL_EXAM_ID = body.dataset.examId || "";
+
+    let examId = INITIAL_EXAM_ID || null;
+    let series = [];
+    let answers = {};
+
+    // NEW: local cache of user's shown answers (qid -> shownIndex)
+    // We save this just before submit and use it for review highlighting
+    // so the review always shows exactly what the user clicked.
+    let localUserAnswers = {};
+
+    function letterForIndex(i){ return ['a','b','c','d','e'][i] || String.fromCharCode(97+i); }
+    function normalizeChoice(c){
+      if (!c) return { text: '' };
+      if (typeof c === 'string') return { text: c };
+      if (typeof c.text === 'string') return { text: c.text };
+      return { text: String(c) };
+    }
+
+    function repairBlock(q){
+      if (!q || typeof q !== 'object') return q;
+      const out = Object.assign({}, q);
+      out.choices = (out.choices || []).map(normalizeChoice);
+      return out;
+    }
+
+    // --- New helper: render one normal question into quizArea and return canonical question object
+    // positionLabel is optional — used to show numbering (Q1, Q2, ...)
+    function renderSingleQuestion(qObj, positionLabel) {
+      const q = repairBlock(qObj);
+      // ensure we preserve any server-provided id (_id or id). If missing, generate local id.
+      const qid = q.id || q._id || ('q-' + Math.random().toString(36).slice(2,9));
+      const choices = (q.choices || []).map(normalizeChoice);
+
+      const block = document.createElement('div');
+      block.className = 'q';
+      const qnum = (typeof positionLabel !== 'undefined') ? positionLabel : (quizArea.querySelectorAll('.q').length + 1);
+      const head = document.createElement('div');
+      head.className = 'q-head';
+      const text = q.text && String(q.text).trim()
+        ? escapeHtml(q.text.trim())
+        : 'Choose the best option';
+      head.innerHTML = '<span style="font-weight:800">Q' + qnum + '.</span> ' + text;
+      block.appendChild(head);
+
+      const choicesWrap = document.createElement('div');
+      choicesWrap.className = 'choices';
+
+      if (!choices.length) {
+        const p = document.createElement('div');
+        p.className = 'muted';
+        p.textContent = 'No choices available for this question.';
+        choicesWrap.appendChild(p);
+      } else {
+        choices.forEach((c, ci) => {
+          const btn = document.createElement('div');
+          btn.className = 'choice';
+          btn.setAttribute('role','button');
+          btn.setAttribute('tabindex','0');
+          btn.dataset.qid = qid;
+          btn.dataset.index = ci;
+
+          const badge = document.createElement('div');
+          badge.className = 'badge';
+          badge.textContent = letterForIndex(ci);
+
+          const txt = document.createElement('div');
+          txt.className = 'text';
+          txt.textContent = c.text || '';
+
+          btn.appendChild(badge);
+          btn.appendChild(txt);
+
+          btn.addEventListener('click', () => {
+            choicesWrap.querySelectorAll('.choice').forEach(n => n.classList.remove('selected'));
+            btn.classList.add('selected');
+            answers[qid] = ci;
+          });
+          btn.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              btn.click();
+            }
+          });
+
+          choicesWrap.appendChild(btn);
+        });
+      }
+
+      block.appendChild(choicesWrap);
+      quizArea.appendChild(block);
+
+      // return canonical question object for series (used by submit)
+      q.id = qid;
+      q.choices = choices;
+      return q;
+    }
+
+    // --- Render quiz including comprehension parents (with children) ---
+    function renderQuiz(list){
+      quizArea.innerHTML = '';
+      answers = {};
+      series = [];
+      localUserAnswers = {}; // reset local cache on new quiz load
+
+      if (!Array.isArray(list) || list.length === 0) {
+        quizArea.innerHTML = '<div class="muted">No quiz questions found. Please import questions in Admin.</div>';
+        return;
+      }
+
+      // we'll maintain a running index for numbering (so comprehension child Q's increment numbering naturally)
+      let runningIndex = 0;
+
+      list.forEach((rawItem) => {
+        // rawItem may be a normal question OR a comprehension parent
+        const item = (rawItem && typeof rawItem === 'object') ? Object.assign({}, rawItem) : rawItem;
+
+        // detect comprehension: either explicit type OR presence of passage
+        const isComprehension = item && (item.type === 'comprehension' || item.passage);
+
+        if (isComprehension) {
+          // Render passage header block
+          const passageBlock = document.createElement('div');
+          passageBlock.className = 'q';
+          const pHead = document.createElement('div');
+          pHead.className = 'q-head';
+          pHead.innerHTML = '<strong>Passage</strong>';
+          passageBlock.appendChild(pHead);
+
+          const pText = document.createElement('div');
+          pText.style.marginTop = '8px';
+          pText.style.whiteSpace = 'pre-wrap';
+          pText.textContent = item.passage || '';
+          passageBlock.appendChild(pText);
+
+          quizArea.appendChild(passageBlock);
+
+          // Render children — prefer server to include full child objects in `children`
+          const children = Array.isArray(item.children) ? item.children : [];
+
+          if (!children.length) {
+            // No children provided inline. Show a helpful message so admin/dev knows to return children.
+            const warn = document.createElement('div');
+            warn.className = 'muted';
+            warn.style.marginTop = '8px';
+            warn.textContent = 'Child questions not included in response. Update server to return "children" for comprehension items.';
+            quizArea.appendChild(warn);
+          } else {
+            children.forEach((child) => {
+              runningIndex++;
+              const qObj = renderSingleQuestion(child, runningIndex);
+              series.push(qObj);
+            });
+          }
+        } else {
+          // normal question item
+          runningIndex++;
+          const qObj = renderSingleQuestion(item, runningIndex);
+          series.push(qObj);
+        }
+      });
+    }
+
+    // --- Updated loadQuiz: request by examId when present, otherwise sampling ---
+    async function loadQuiz(count){
+      status.textContent = 'Loading quiz...';
+      errorMsg.textContent = '';
+      try {
+        // Determine effective examId: dataset OR URL param
+        const urlExamId = (new URLSearchParams(window.location.search)).get('examId');
+        const effectiveExamId = examId || urlExamId || null;
+
+        const params = new URLSearchParams();
+
+        if (effectiveExamId) {
+          // ask server for the specific exam instance (will return exact question order + children)
+          params.set('examId', effectiveExamId);
+        } else {
+          params.set('count', String(count || DEFAULT_COUNT));
+          if (MODULE_KEY) params.set('module', MODULE_KEY);
+          if (ORG_SLUG) params.set('org', ORG_SLUG);
+        }
+
+        const res = await fetch('/api/lms/quiz?' + params.toString(), { cache: 'no-store' });
+
+        if (!res.ok) {
+          const t = await res.text().catch(()=>null);
+          throw new Error(t || res.statusText || 'failed to fetch quiz');
+        }
+        const payload = await res.json();
+
+        // persist examId from backend here so submit uses same id
+        examId = payload.examId || effectiveExamId || null;
+        if (examId) {
+          // also write to body dataset for debugging / server-render fallback
+          body.dataset.examId = examId;
+        }
+
+        const rawSeries = payload.series || payload.questions || payload.items || [];
+        if (!Array.isArray(rawSeries)) throw new Error('unexpected quiz format');
+        series = rawSeries.map(s => Object.assign({}, s));
+        renderQuiz(series);
+        status.textContent = '';
+      } catch (e) {
+        console.error('loadQuiz error:', e);
+        status.textContent = 'Error loading quiz: ' + (e.message || e);
+        quizArea.innerHTML = '<div class="muted">Unable to load quiz questions. Check that questions were imported and that /api/lms/quiz returns data.</div>';
+      }
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      const answered = Object.keys(answers).length;
+      if (answered < series.length) {
+        if (!confirm('You answered ' + answered + ' of ' + series.length + '. Submit anyway?')) return;
+      }
+
+      // build payload
+      const payload = { examId, answers: [] };
+      for (const s of series) {
+        const id = s.id || s._id || null;
+        payload.answers.push({
+          questionId: id,
+          choiceIndex: (typeof answers[id] === 'number') ? answers[id] : null
+        });
+      }
+
+      // SAVE a copy of what the user actually clicked (shown indexes)
+      localUserAnswers = Object.assign({}, answers);
+
+      submitBtn.disabled = true;
+      status.textContent = 'Submitting answers...';
+      errorMsg.textContent = '';
+      try {
+        // Always post to the canonical API path you shared
+        const res = await fetch('/api/lms/quiz/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          // try to get JSON body, otherwise text
+          let bodyText = '';
+          try {
+            const j = await res.json().catch(()=>null);
+            bodyText = j ? (j.error || j.message || JSON.stringify(j)) : await res.text().catch(()=>null);
+          } catch (ee) {
+            bodyText = (ee && ee.message) || 'unknown';
+          }
+
+          const msg = `submit failed (${res.status}) — ${bodyText || res.statusText}`;
+          console.warn('Submit response not ok:', res.status, bodyText);
+          status.textContent = '';
+          errorMsg.textContent = msg;
+          // also output to console for easier debugging
+          console.error('Quiz submit failed:', res.status, bodyText);
+          return;
+        }
+
+        const out = await res.json();
+        console.log('Quiz submit success:', out);
+        showResult(out);
+        status.textContent = '';
+      } catch (err) {
+        console.error('submit error:', err);
+        status.textContent = '';
+        errorMsg.textContent = 'Error: ' + (err.message || err);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    reloadBtn.addEventListener('click', () => loadQuiz(DEFAULT_COUNT));
+
+    // helper to normalize strings for loose matching
+    function normStr(s) {
+      if (!s && s !== 0) return '';
+      return String(s).trim().replace(/\s+/g,' ').toLowerCase();
+    }
+
+    // UPDATED showResult: translates canonical correctIndex to displayed index for review highlights
+    function showResult(resp){
+      result.style.display = 'block';
+      result.innerHTML =
+        '<div style="font-weight:800;font-size:16px">Score: ' + resp.score + ' / ' + resp.total + ' — ' + resp.percentage + '%</div>' +
+        '<div style="margin-top:8px">' +
+        (resp.passed ? '<strong style="color:#bfffb1">PASSED</strong>' : '<strong style="color:#ffb1b1">FAILED</strong>') +
+        ' (pass ' + resp.passThreshold + '%)</div>' +
+        '<div style="margin-top:10px">Detailed feedback below:</div>';
+
+      // If server provided a certificate URL for passed attempts, show it here
+      if (resp.passed && resp.certificateUrl) {
+        const certHtml = document.createElement('div');
+        certHtml.style.marginTop = '12px';
+        certHtml.innerHTML = `
+          <div style="margin-bottom:8px; font-weight:700">Certificate</div>
+          <div style="margin-bottom:8px">You passed — download your certificate below:</div>
+          <div><a href="${escapeHtmlAttr(resp.certificateUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--gold); font-weight:800; text-decoration:underline;">Download Certificate</a></div>
+        `;
+        result.appendChild(certHtml);
+      }
+
+      const list = document.createElement('div');
+      list.style.marginTop = '12px';
+
+      (resp.details || []).forEach(d => {
+        // try to find matching question in series:
+        // 1) match by id/_id
+        // 2) if not found, fallback to matching by question text (loose)
+        let q = series.find(s => String(s.id || s._id) === String(d.questionId));
+        if (!q) {
+          // fallback: compare normalized text
+          const targetText = normStr(d.questionText || d.question || '');
+          if (targetText) {
+            q = series.find(s => normStr(s.text || '') === targetText);
+          }
+          // if still not found, try fuzzy substring match on text
+          if (!q && targetText) {
+            q = series.find(s => normStr(s.text || '').includes(targetText) || targetText.includes(normStr(s.text || '')));
+          }
+        }
+
+        const block = document.createElement('div');
+        block.className = 'fb-question';
+
+        const title = document.createElement('div');
+        title.className = 'fb-qtitle';
+        title.textContent = q ? (q.text || '') : (d.questionId || d.question || '');
+        block.appendChild(title);
+
+        const displayedChoices = (q && q.choices && q.choices.length) ? q.choices : (d.choices || []);
+
+        // helper to read text from a choice object/string
+        const choiceText = (ch) => (typeof ch === 'string') ? ch : (ch && (ch.text || '')) || '';
+
+        // Determine displayedCorrectIndex:
+        // 1) if q contains choicesOrder mapping (display->original) and server returned canonical d.correctIndex, use it
+        // 2) else try to match canonical choice text (d.choices[d.correctIndex]) against displayedChoices
+        // 3) else fall back to using d.correctIndex directly
+        let displayedCorrectIndex = null;
+        const canonicalCorrect = (typeof d.correctIndex === 'number') ? d.correctIndex : null;
+
+        try {
+          if (q && Array.isArray(q.choicesOrder) && canonicalCorrect !== null) {
+            // q.choicesOrder: mapping[displayIndex] = originalIndex
+            for (let di = 0; di < q.choicesOrder.length; di++) {
+              if (q.choicesOrder[di] === canonicalCorrect) { displayedCorrectIndex = di; break; }
+            }
+          }
+
+          if (displayedCorrectIndex === null && Array.isArray(d.choices) && canonicalCorrect !== null) {
+            const canonicalChoice = d.choices[canonicalCorrect];
+            const canonicalText = choiceText(canonicalChoice);
+            for (let i = 0; i < displayedChoices.length; i++) {
+              if (choiceText(displayedChoices[i]) === canonicalText) { displayedCorrectIndex = i; break; }
+            }
+          }
+
+          if (displayedCorrectIndex === null && canonicalCorrect !== null && displayedChoices.length > canonicalCorrect) {
+            displayedCorrectIndex = canonicalCorrect;
+          }
+        } catch (e) {
+          displayedCorrectIndex = (canonicalCorrect !== null && displayedChoices.length > canonicalCorrect) ? canonicalCorrect : null;
+        }
+
+        // Determine which index to treat as the user's shown index (what they actually clicked)
+        let userShownIndex = null;
+        try {
+          if (q && typeof localUserAnswers[q.id] === 'number') {
+            userShownIndex = localUserAnswers[q.id];
+          } else if (typeof d.shownIndex === 'number') {
+            userShownIndex = d.shownIndex;
+          } else if (typeof d.shown === 'number') {
+            userShownIndex = d.shown;
+          } else if (typeof d.yourIndex === 'number') {
+            // server sometimes returns canonical yourIndex; use only as last resort
+            userShownIndex = d.yourIndex;
+          } else {
+            userShownIndex = null;
+          }
+        } catch (e) {
+          userShownIndex = (typeof d.yourIndex === 'number') ? d.yourIndex : null;
+        }
+
+        const choicesContainer = document.createElement('div');
+        displayedChoices.forEach((c, i) => {
+          const row = document.createElement('div');
+          row.className = 'fb-choice';
+
+          const label = document.createElement('div');
+          label.className = 'fb-label';
+          label.textContent = letterForIndex(i) + '.';
+
+          const txt = document.createElement('div');
+          txt.textContent = choiceText(c);
+
+          row.appendChild(label);
+          row.appendChild(txt);
+
+          // mark correct using the displayedCorrectIndex
+          if (displayedCorrectIndex !== null && i === displayedCorrectIndex) {
+            row.classList.add('correct');
+          }
+          // mark wrong if this is what the user clicked but the attempt is not correct
+          if (userShownIndex !== null && i === userShownIndex && !d.correct) {
+            row.classList.add('wrong');
+          }
+
+          choicesContainer.appendChild(row);
+        });
+
+        block.appendChild(choicesContainer);
+        list.appendChild(block);
+      });
+
+      result.appendChild(list);
+      result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function escapeHtml(s){
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    function escapeHtmlAttr(s) {
+      if (s === undefined || s === null) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,"&#039;").replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // initial load
+    loadQuiz(DEFAULT_COUNT);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Live Visitors — Admin</title>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, sans-serif; margin:18px; color:#0b2545; }
+    .card { background:#fff; border-radius:10px; padding:14px; box-shadow:0 6px 18px rgba(11,37,69,0.04); max-width:1100px; }
+    .metrics { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    .metric { background:#f5f9ff; border-radius:8px; padding:12px; min-width:160px; }
+    .metric h3 { margin:0; font-size:0.9rem; color:#16365c; }
+    .metric p { margin:6px 0 0 0; font-weight:700; font-size:1.4rem; }
+    .top-paths { margin-top:8px; }
+    .log { margin-top:12px; max-height:360px; overflow:auto; border:1px solid #eef4fb; border-radius:8px; padding:8px; background:#fcfeff; }
+    .log-item { padding:6px 8px; border-bottom:1px dashed #eef5fb; font-size:0.95rem; color:#234; }
+    .log-item:last-child { border-bottom:none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="margin-top:0">Live visitors (admin)</h2>
+    <div class="metrics">
+      <div class="metric">
+        <h3>Total hits (today)</h3>
+        <p id="totalHits">—</p>
+      </div>
+      <div class="metric">
+        <h3>Unique visitors (today)</h3>
+        <p id="uniqueToday">—</p>
+      </div>
+      <div style="flex:1; min-width:240px;">
+        <h3 style="margin:0 0 6px 0">Top paths (today)</h3>
+        <div id="topPaths" class="top-paths"></div>
+      </div>
+    </div>
+
+    <h4 style="margin:10px 0 6px 0">Live log</h4>
+    <div id="log" class="log" aria-live="polite"></div>
+  </div>
+
+<script>
+(function () {
+  const totalHitsEl = document.getElementById('totalHits');
+  const uniqueTodayEl = document.getElementById('uniqueToday');
+  const topPathsEl = document.getElementById('topPaths');
+  const logEl = document.getElementById('log');
+
+  async function poll() {
+    try {
+      const resp = await fetch('/admin/visitors/summary', { credentials: 'same-origin' });
+      if (!resp.ok) throw new Error('status ' + resp.status);
+      const data = await resp.json();
+
+      totalHitsEl.textContent = String(data.totalHits ?? '0');
+      uniqueTodayEl.textContent = String(data.uniqueToday ?? '0');
+
+      topPathsEl.innerHTML = '';
+      (data.topPaths || []).forEach(tp => {
+        const el = document.createElement('div');
+        el.style.fontSize = '0.95rem';
+        el.textContent = `${tp._id} — ${tp.hits} hits`;
+        topPathsEl.appendChild(el);
+      });
+
+      const entry = document.createElement('div');
+      entry.className = 'log-item';
+      entry.textContent = `[${new Date(data.timestamp).toLocaleTimeString()}] total=${data.totalHits} unique=${data.uniqueToday}`;
+      logEl.prepend(entry);
+      while (logEl.children.length > 200) logEl.removeChild(logEl.lastChild);
+    } catch (err) {
+      const entry = document.createElement('div');
+      entry.className = 'log-item';
+      entry.textContent = `[${new Date().toLocaleTimeString()}] poll error: ${err.message || err}`;
+      logEl.prepend(entry);
+    } finally {
+      setTimeout(poll, 5000); // poll every 5 seconds
+    }
+  }
+
+  // begin polling after a short delay to let page settle
+  setTimeout(poll, 500);
+})();
+</script>
+
+</body>
+</html>

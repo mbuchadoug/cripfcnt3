@@ -1,0 +1,39 @@
+{{!-- views/org/module_detail.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{module.title}} | {{org.name}}</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  {{> navbar}}
+
+  <main class="container" style="max-width: 960px; margin: 2rem auto;">
+    <h1>{{module.title}}</h1>
+    <p><small>{{org.name}} • Module slug: {{module.slug}}</small></p>
+
+    {{#if module.description}}
+      <p>{{module.description}}</p>
+    {{/if}}
+
+    {{#if module.content}}
+      <article>
+        {{{module.content}}} {{!-- allow HTML learning material if you store it this way --}}
+      </article>
+    {{else}}
+      <p>No learning material has been added yet for this module.</p>
+    {{/if}}
+
+    <p style="margin-top: 1.5rem;">
+      <a href="/org/{{org.slug}}/quiz?module={{module.slug}}" class="btn btn-primary">
+        Take quiz for this module
+      </a>
+    </p>
+
+    <p style="margin-top: 1rem;">
+      <a href="/org/{{org.slug}}/dashboard">&larr; Back to dashboard</a>
+    </p>
+  </main>
+</body>
+</html>

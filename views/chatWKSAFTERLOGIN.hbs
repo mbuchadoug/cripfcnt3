@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{title}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f7fa; }
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;}
+    h1{color:#003366;font-weight:800;margin:0;}
+    p{font-size:1rem;color:#333;margin:6px 0 0 0;}
+    input,button{padding:8px;margin:4px 0;font-size:1rem;}
+    button{background:#0066cc;color:#fff;border:none;border-radius:4px;cursor:pointer;transition:0.2s}
+    button:hover{background:#004c99}
+    #output{background:#f9fafb;border-radius:12px;padding:1.5rem;font-family:"Inter",sans-serif;font-size:15px;color:#222;line-height:1.7;max-height:75vh;overflow-y:auto}
+    .loader{display:inline-block;width:50px;height:50px;border:4px solid #e0e0e0;border-top:4px solid #0066cc;border-radius:50%;animation:spin 1s linear infinite;margin-top:15px}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    .loading-text{font-size:1rem;color:#003366;margin-top:10px;font-weight:600;letter-spacing:0.5px}
+    .section{margin-bottom:1.6rem}
+    .section-header{color:#003366;font-weight:700;font-size:15px;margin-bottom:0.4rem}
+    .divider{border-top:1px solid #e0e0e0;margin:1.2rem 0}
+    .user-block{display:flex;align-items:center;gap:12px;font-size:0.95rem;color:#222}
+    .user-block img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #e6eef8}
+    .user-meta{text-align:right}
+    .user-meta .name{font-weight:700;color:#003366}
+    .user-meta .email{font-size:0.85rem;color:#666}
+    .user-actions a{display:inline-block;margin-left:12px;padding:6px 10px;background:#fff;border:1px solid #d9e6fb;color:#003366;text-decoration:none;border-radius:8px;font-weight:600}
+    @media (max-width:680px){body{margin:16px}.user-block img{width:36px;height:36px}}
+    /* Note style */
+    .note { background:#fff; border-left:4px solid #ffd54f; padding:12px 16px; border-radius:8px; margin-top:12px; color:#333; }
+    .note .title { font-weight:700; color:#333; margin-bottom:6px; }
+    .note small { color:#555; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>{{title}}</h1>
+      <p>{{message}}</p>
+    </div>
+
+    {{#if user}}
+      <div class="user-block" aria-live="polite">
+        <img src="{{user.photo}}" alt="avatar" onerror="this.style.display='none'">
+        <div class="user-meta">
+          <div class="name">{{user.firstName}}{{#if user.lastName}} {{user.lastName}}{{/if}}</div>
+          <div class="email">{{user.email}}</div>
+        </div>
+        <div class="user-actions">
+          <a href="/auth/logout" title="Sign out">Sign out</a>
+        </div>
+      </div>
+    {{/if}}
+  </header>
+
+  <div style="margin-bottom:18px;">
+    <input id="entity" type="text" placeholder="e.g., Lafarge" style="width:60%; max-width:520px;">
+    <button id="analyzeBtn">Analyze</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    // small helper: escape HTML
+    function escapeHtml(s){
+      if(!s) return "";
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    // build regex that matches spaced-out letters for an entity (so "L a f a r g e" or "La farge" match)
+    function entitySpacedRegex(entity) {
+      if (!entity) return null;
+      const core = entity.replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+      if (!core) return null;
+      const pattern = core.split("").map(ch => ch.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&") + "\\s*").join("");
+      return new RegExp(pattern, "gi");
+    }
+
+    // conservative cleaning of streamed text (keeps punctuation, avoids over-joining)
+    function conservativeClean(text) {
+      if (!text) return "";
+
+      let s = String(text);
+
+      // remove SSE markers
+      s = s.replace(/data:\s*/g, "").replace(/\[DONE\]/g, "");
+
+      // collapse multiple whitespace to a single space
+      s = s.replace(/\s+/g, " ").trim();
+
+      // fix broken decimals (e.g. "0 . 875")
+      s = s.replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
+
+      // normalize SCOI / ERF broken spacing
+      s = s.replace(/\bSCO\s*I\b/gi, "SCOI");
+      s = s.replace(/\bER\s*F\b/gi, "ERF");
+
+      // Additional robust fixes for spaced-out full tokens:
+      // Ensure patterns like "S CO I" or "S  C O  I" become "SCOI"
+      s = s.replace(/\bS\s*C\s*O\s*I\b/gi, "SCOI");
+
+      // Fix spaced forms of "Resilience" (e.g., "Res ilience", "R e s i l i e n c e")
+      s = s.replace(/\bR\s*e\s*s\s*i\s*l\s*i\s*e\s*n\s*c\s*e\b/gi, "Resilience");
+
+      // Fix "R ationale" -> "Rationale"
+      s = s.replace(/\bR\s+ationale\b/gi, "Rationale");
+
+      // Fix "Adjust ed" -> "Adjusted"
+      s = s.replace(/\bAdjust\s*ed\b/gi, "Adjusted");
+
+      // Fix broken/bounded CRIPFCnt variants like "C R I P F C n t" or "CR IP FC nt"
+      s = s.replace(/\bC\s*R\s*I\s*P\s*F\s*C\s*n\s*t\b/gi, "CRIPFCnt");
+      s = s.replace(/\bC\s*R\s*I\s*P\s*F\s*C\s*N\s*T\b/gi, "CRIPFCnt");
+
+      return s;
+    }
+
+    document.getElementById('analyzeBtn').addEventListener('click', startChat);
+    document.getElementById('entity').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') startChat();
+    });
+
+    async function startChat() {
+      const entityInput = document.getElementById("entity");
+      const entity = entityInput.value.trim();
+      if (!entity) return alert("Enter a company name");
+
+      const output = document.getElementById("output");
+      output.innerHTML = `
+        <b>🔍 SCOI Audit — ${escapeHtml(entity)}</b><br><br>
+        <div class="loader"></div>
+        <div class="loading-text">Analyzing data for ${escapeHtml(entity)}...</div>
+      `;
+
+      try {
+        const res = await fetch("/api/chat-stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entity })
+        });
+        if (!res.body) throw new Error("No response stream from server.");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let done = false;
+
+        // Read stream; ensure we don't accidentally join tokens across chunk boundaries
+        while (!done) {
+          const { value, done: d } = await reader.read();
+          done = d;
+          if (value) {
+            const chunk = decoder.decode(value, { stream: !done });
+            if (fullText.length > 0 && /[A-Za-z0-9]$/.test(fullText) && /^[A-Za-z0-9]/.test(chunk)) {
+              fullText += " " + chunk;
+            } else {
+              fullText += chunk;
+            }
+          }
+        }
+
+        // conservative clean the whole payload
+        let cleaned = conservativeClean(fullText);
+
+        // canonical tokens we want to protect/correct
+        const canonical = {
+          "lafarge": "Lafarge",
+          "innscor": "Innscor",
+          "zimplats": "Zimplats",
+          "econet": "Econet",
+          "nyaradzo": "Nyaradzo",
+          "natfood": "Natfood",
+          "cbz": "CBZ",
+          "cafca": "Cafca",
+          "zimsec": "ZIMSEC"
+        };
+
+        // 1) Specific entity canonicalization (user-entered) - very safe
+        const entRegex = entitySpacedRegex(entity);
+        if (entRegex) {
+          cleaned = cleaned.replace(entRegex, entity);
+        }
+
+        // 2) Fallback canonical replacements (allow spaced letters)
+        Object.keys(canonical).forEach(k => {
+          const v = canonical[k];
+          // match letters with optional spaces between them (so "L a f a r g e" or "La farge" match)
+          const spacedPattern = k.split("").map(ch => ch.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&") + "\\s*").join("");
+          cleaned = cleaned.replace(new RegExp(spacedPattern, "gi"), v);
+        });
+
+        // ----------------------------
+        // Ensure spacing around canonical tokens (fix "Lafargehas", "lafargecontributes")
+        // ----------------------------
+        const canonValues = Object.values(canonical)
+          .map(v => v.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"))
+          .join("|");
+
+        if (canonValues.length > 0) {
+          // insert space AFTER token if immediately followed by a letter/digit (e.g., "Lafargehas" -> "Lafarge has")
+          cleaned = cleaned.replace(new RegExp(`(${canonValues})(?=[A-Za-z0-9])`, "gi"), "$1 ");
+
+          // insert space BEFORE token if immediately preceded by a letter/digit (e.g., "theLafarge" -> "the Lafarge")
+          // use lookbehind (supported in modern browsers)
+          cleaned = cleaned.replace(new RegExp(`(?<=[A-Za-z0-9])(${canonValues})`, "gi"), " $1");
+
+          // also handle lowercase canonical forms that might have been introduced earlier
+          cleaned = cleaned.replace(new RegExp(`(${canonValues.toLowerCase()})(?=[A-Za-z0-9])`, "gi"), (m, p1) => {
+            return p1 + " ";
+          });
+
+          // collapse accidental double spaces into single spaces
+          cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
+        }
+        // ----------------------------
+
+        // Final safety: fix any remaining broken CRIPFCnt forms
+        cleaned = cleaned.replace(/\bC\s*R\s*I\s*P\s*F\s*C\s*n\s*t\b/gi, "CRIPFCnt");
+
+        // Split into sections by numeric markers used by the model
+        const sections = cleaned
+          .split(/(?=\d+\s*[️⃣]\s*)/)
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        let formatted = sections.map(sec => {
+          const header = sec.match(/^\d+\s*[️⃣]\s*[^:]+:/)?.[0]
+                       || sec.match(/^\d+\s*[️⃣]\s*[^\d]*/)?.[0]
+                       || "Section";
+          const body = sec.replace(header, "").trim();
+          return `
+            <div class="section">
+              <div class="section-header">${escapeHtml(header)}</div>
+              <div>${escapeHtml(body)}</div>
+            </div>
+            <div class="divider"></div>
+          `;
+        }).join("");
+
+        // Highlight key metrics visually
+        formatted = formatted
+          .replace(/(\d+(\.\d+)?\s*[×\/]\s*\d+(\.\d+)?)/g, "<b>$1</b>")
+          .replace(/\b(SCOI\s*=?\s*[\d.]+)/gi, "<b style='color:#004c99;'>$1</b>")
+          .replace(/\b(ERF\s*=?\s*[\d.]+)/gi, "<b style='color:#006600;'>$1</b>")
+          .replace(/\b(Visibility|Contribution|Adjustment|Commentary|Environment|Calculation|Rationale|Score)\b/gi, "<b style='color:#003366;'>$1</b>");
+
+        // Compute authoritative SCOI block if numeric values present
+        function findNumeric(label) {
+          const re = new RegExp(label + '[^\\d\\n]*(\\d+(?:\\.\\d+)?)', 'i');
+          const m = cleaned.match(re);
+          return m ? parseFloat(m[1]) : null;
+        }
+
+        const visRaw = findNumeric('Visibility');
+        const conRaw = findNumeric('Contribution');
+        const erfMatch = cleaned.match(/ERF[^0-9\-]*([0-9]+(?:\.[0-9]+)?)/i);
+        const erfRaw = erfMatch ? parseFloat(erfMatch[1]) : null;
+
+        const normalize = x => {
+          if (x === null || x === undefined || Number.isNaN(x)) return null;
+          const n = Number(x);
+          return n > 10 ? +(n/10).toFixed(3) : +n.toFixed(3);
+        };
+
+        const visibility = normalize(visRaw);
+        const contribution = normalize(conRaw);
+        const ERF = erfRaw ? Number(erfRaw) : null;
+
+        if (visibility && contribution) {
+          const rawSCOI = visibility === 0 ? 0 : +(contribution / visibility).toFixed(3);
+          const erfUsed = ERF || 1;
+          const adjusted = +(rawSCOI * erfUsed).toFixed(3);
+
+          const auth = `
+            <div class="section">
+              <div class="section-header">✅ Computed SCOI — authoritative</div>
+              <div>
+                Visibility = ${visibility} / 10<br>
+                Contribution = ${contribution} / 10<br>
+                SCOI = Contribution / Visibility = ${contribution} / ${visibility} = <b>${rawSCOI}</b><br>
+                ERF = ${erfUsed}<br>
+                Adjusted SCOI = SCOI × ERF = <b>${adjusted}</b>
+              </div>
+            </div>
+            <div class="divider"></div>
+          `;
+          formatted = auth + formatted;
+        }
+
+        // Append final CRIPFCnt note
+        const note = `
+          <div class="section note">
+            <div class="title">📌 Note</div>
+            <div>
+              <small>This score reflects the commonly accepted <b>(Grid)</b> value interpretation.<br>
+              For the full <b>CRIPFCnt placement-based recalibration</b>, contact <b>CRIPFCnt Research Desk</b>.</small>
+            </div>
+          </div>
+        `;
+
+        output.innerHTML = formatted + note;
+
+      } catch (err) {
+        output.innerHTML = `❌ Error: ${escapeHtml(err.message || String(err))}`;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f7fa; }
+    h1 { color: #003366; }
+    #output { white-space: pre-wrap; background: #fff; padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+    input, button { padding: 8px; margin: 4px 0; }
+    button { background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #004c99; }
+  </style>
+
+
+  
+</head>
+<body>
+  <h1>{{title}}</h1>
+  <p>{{message}}</p>
+
+  <input id="entity" type="text" placeholder="e.g., Lafarge">
+  <button onclick="startChat()">Analyze</button>
+
+  <div id="output"></div>
+<script>
+  async function startChat() {
+    const entity = document.getElementById("entity").value.trim();
+    if (!entity) return alert("Enter a company name");
+
+    const output = document.getElementById("output");
+    output.textContent = "Starting analysis for " + entity + "...\n\n";
+
+    try {
+      const res = await fetch("/api/chat-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity })
+      });
+
+      if (!res.body) throw new Error("No response stream from server");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        let chunk = decoder.decode(value, { stream: true });
+
+        // Remove "data:" and compress excessive line breaks/spaces
+        chunk = chunk
+          .replace(/data:\s*/g, "")
+          .replace(/\n+/g, " ") // merge lines into spaces
+          .replace(/\s{2,}/g, " "); // remove double spaces
+
+        fullText += chunk;
+        output.textContent = fullText.trim();
+        output.scrollTop = output.scrollHeight;
+      }
+
+    } catch (err) {
+      output.textContent += "\n❌ Error: " + err.message;
+    }
+  }
+</script>
+
+
+
+
+</body>
+</html>

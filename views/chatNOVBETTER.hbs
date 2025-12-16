@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{title}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f7fa; }
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;}
+    h1{color:#003366;font-weight:800;margin:0;}
+    p{font-size:1rem;color:#333;margin:6px 0 0 0;}
+    input,button{padding:8px;margin:4px 0;font-size:1rem;}
+    button{background:#0066cc;color:#fff;border:none;border-radius:4px;cursor:pointer;transition:0.2s}
+    button:hover{background:#004c99}
+    #output{background:#f9fafb;border-radius:12px;padding:1.5rem;font-family:"Inter",sans-serif;font-size:15px;color:#222;line-height:1.7;max-height:75vh;overflow-y:auto}
+    .loader{display:inline-block;width:50px;height:50px;border:4px solid #e0e0e0;border-top:4px solid #0066cc;border-radius:50%;animation:spin 1s linear infinite;margin-top:15px}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    .loading-text{font-size:1rem;color:#003366;margin-top:10px;font-weight:600;letter-spacing:0.5px}
+    .section{margin-bottom:1.6rem}
+    .section-header{color:#003366;font-weight:700;font-size:15px;margin-bottom:0.4rem}
+    .divider{border-top:1px solid #e0e0e0;margin:1.2rem 0}
+    .user-block{display:flex;align-items:center;gap:12px;font-size:0.95rem;color:#222}
+    .user-block img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #e6eef8}
+    .user-meta{text-align:right}
+    .user-meta .name{font-weight:700;color:#003366}
+    .user-meta .email{font-size:0.85rem;color:#666}
+    .user-actions a{display:inline-block;margin-left:12px;padding:6px 10px;background:#fff;border:1px solid #d9e6fb;color:#003366;text-decoration:none;border-radius:8px;font-weight:600}
+    @media (max-width:680px){body{margin:16px}.user-block img{width:36px;height:36px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>{{title}}</h1>
+      <p>{{message}}</p>
+    </div>
+
+    {{#if user}}
+      <div class="user-block" aria-live="polite">
+        <img src="{{user.photo}}" alt="avatar" onerror="this.style.display='none'">
+        <div class="user-meta">
+          <div class="name">{{user.firstName}}{{#if user.lastName}} {{user.lastName}}{{/if}}</div>
+          <div class="email">{{user.email}}</div>
+        </div>
+        <div class="user-actions">
+          <a href="/auth/logout" title="Sign out">Sign out</a>
+        </div>
+      </div>
+    {{/if}}
+  </header>
+
+  <div style="margin-bottom:18px;">
+    <input id="entity" type="text" placeholder="e.g., Lafarge" style="width:60%; max-width:520px;">
+    <button id="analyzeBtn">Analyze</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    // Escape HTML
+    function escapeHtml(s){
+      if(!s) return "";
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    // Build a regex pattern that matches the entity even if letters are spaced or case differs
+    function entitySpacedRegex(entity) {
+      if (!entity) return null;
+      const core = entity.replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+      if (!core) return null;
+      const pattern = core.split("").map(ch =>
+        ch.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&") + "\\s*"
+      ).join("");
+      return new RegExp(pattern, "gi");
+    }
+
+    // Light cleaning only – FIXED
+    function conservativeClean(text) {
+      if (!text) return "";
+
+      let s = String(text);
+
+      // remove SSE markers
+      s = s.replace(/data:\s*/g, "").replace(/\[DONE\]/g, "");
+
+      // collapse multiple whitespace (spaces / newlines / tabs) into a single space
+      s = s.replace(/\s+/g, " ").trim();
+
+      // fix broken decimals like "0 . 875"
+      s = s.replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
+
+      // fix SCOI / ERF spacing
+      s = s.replace(/\bSCO\s*I\b/gi, "SCOI");
+      s = s.replace(/\bER\s*F\b/gi, "ERF");
+
+      // fix "R ationale" → "Rationale"
+      s = s.replace(/\bR\s+ationale\b/gi, "Rationale");
+
+      return s;
+    }
+
+    document.getElementById('analyzeBtn').addEventListener('click', startChat);
+    document.getElementById('entity').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') startChat();
+    });
+
+    async function startChat() {
+      const entityInput = document.getElementById("entity");
+      const entity = entityInput.value.trim();
+      if (!entity) return alert("Enter a company name");
+
+      const output = document.getElementById("output");
+      output.innerHTML = `
+        <b>🔍 SCOI Audit — ${escapeHtml(entity)}</b><br><br>
+        <div class="loader"></div>
+        <div class="loading-text">Analyzing data for ${escapeHtml(entity)}...</div>
+      `;
+
+      try {
+        const res = await fetch("/api/chat-stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entity })
+        });
+        if (!res.body) throw new Error("No response stream from server.");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let done = false;
+
+        // Read stream; insert a space at chunk boundaries if necessary to avoid run-together words
+        while (!done) {
+          const { value, done: d } = await reader.read();
+          done = d;
+          if (value) {
+            const chunk = decoder.decode(value, { stream: !done });
+            if (fullText.length > 0 && /[A-Za-z0-9]$/.test(fullText) && /^[A-Za-z0-9]/.test(chunk)) {
+              fullText += " " + chunk;
+            } else {
+              fullText += chunk;
+            }
+          }
+        }
+
+        // Clean minimally
+        let cleaned = conservativeClean(fullText);
+
+        // Canonicalize the entity specifically (safe — only targets the user supplied entity)
+        const entRegex = entitySpacedRegex(entity);
+        if (entRegex) {
+          cleaned = cleaned.replace(entRegex, entity);
+        }
+
+        // Also apply a few well-known safe canonicalizations for common brands (fallback)
+        const canonical = {
+          "lafarge": "Lafarge",
+          "innscor": "Innscor",
+          "zimplats": "Zimplats",
+          "econet": "Econet",
+          "nyaradzo": "Nyaradzo",
+          "natfood": "Natfood",
+          "cbz": "CBZ",
+          "cafca": "Cafca",
+          "zimsec": "ZIMSEC"
+        };
+        Object.keys(canonical).forEach(k => {
+          const v = canonical[k];
+          const re = new RegExp("\\b" + k.split("").join("\\s*") + "\\b", "gi");
+          cleaned = cleaned.replace(re, v);
+        });
+
+        // Split sections by number pattern
+        const sections = cleaned
+          .split(/(?=\d+\s*[️⃣]\s*)/)
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        let formatted = sections.map(sec => {
+          const header = sec.match(/^\d+\s*[️⃣]\s*[^:]+:/)?.[0]
+                       || sec.match(/^\d+\s*[️⃣]\s*[^\d]*/)?.[0]
+                       || "Section";
+          const body = sec.replace(header, "").trim();
+          return `
+            <div class="section">
+              <div class="section-header">${escapeHtml(header)}</div>
+              <div>${escapeHtml(body)}</div>
+            </div>
+            <div class="divider"></div>
+          `;
+        }).join("");
+
+        // Highlight key metrics
+        formatted = formatted
+          .replace(/(\d+(\.\d+)?\s*[×\/]\s*\d+(\.\d+)?)/g, "<b>$1</b>")
+          .replace(/\b(SCOI\s*=?\s*[\d.]+)/gi, "<b style='color:#004c99;'>$1</b>")
+          .replace(/\b(ERF\s*=?\s*[\d.]+)/gi, "<b style='color:#006600;'>$1</b>")
+          .replace(/\b(Visibility|Contribution|Adjustment|Commentary|Environment|Calculation|Rationale|Score)\b/gi, "<b style='color:#003366;'>$1</b>");
+
+        // Compute authoritative SCOI block
+        function findNumeric(label) {
+          const re = new RegExp(label + '[^\\d\\n]*(\\d+(?:\\.\\d+)?)', 'i');
+          const m = cleaned.match(re);
+          return m ? parseFloat(m[1]) : null;
+        }
+
+        const visRaw = findNumeric('Visibility');
+        const conRaw = findNumeric('Contribution');
+        const erfMatch = cleaned.match(/ERF[^0-9\-]*([0-9]+(?:\.[0-9]+)?)/i);
+        const erfRaw = erfMatch ? parseFloat(erfMatch[1]) : null;
+
+        const normalize = x => {
+          if (x === null || x === undefined || Number.isNaN(x)) return null;
+          const n = Number(x);
+          return n > 10 ? +(n/10).toFixed(3) : +n.toFixed(3);
+        };
+
+        const visibility = normalize(visRaw);
+        const contribution = normalize(conRaw);
+        const ERF = erfRaw ? Number(erfRaw) : null;
+
+        if (visibility && contribution) {
+          const rawSCOI = visibility === 0 ? 0 : +(contribution / visibility).toFixed(3);
+          const erfUsed = ERF || 1;
+          const adjusted = +(rawSCOI * erfUsed).toFixed(3);
+
+          const auth = `
+            <div class="section">
+              <div class="section-header">✅ Computed SCOI — authoritative</div>
+              <div>
+                Visibility = ${visibility} / 10<br>
+                Contribution = ${contribution} / 10<br>
+                SCOI = Contribution / Visibility = ${contribution} / ${visibility} = <b>${rawSCOI}</b><br>
+                ERF = ${erfUsed}<br>
+                Adjusted SCOI = SCOI × ERF = <b>${adjusted}</b>
+              </div>
+            </div>
+            <div class="divider"></div>
+          `;
+          formatted = auth + formatted;
+        }
+
+        output.innerHTML = formatted;
+
+      } catch (err) {
+        output.innerHTML = `❌ Error: ${escapeHtml(err.message || String(err))}`;
+      }
+    }
+  </script>
+</body>
+</html>

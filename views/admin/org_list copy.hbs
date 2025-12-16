@@ -1,0 +1,22 @@
+<h1>Organizations</h1>
+
+<a href="/admin/orgs/create">➕ Create New Organization</a>
+
+<table border="1" cellpadding="8" style="margin-top:15px;">
+  <tr>
+    <th>Name</th>
+    <th>Slug</th>
+    <th>Actions</th>
+  </tr>
+
+  {{#each orgs}}
+    <tr>
+      <td>{{this.name}}</td>
+      <td>{{this.slug}}</td>
+      <td>
+        <a href="/admin/orgs/{{this.slug}}">View</a> |
+        <a href="/admin/orgs/{{this.slug}}/edit">Edit</a>
+      </td>
+    </tr>
+  {{/each}}
+</table>

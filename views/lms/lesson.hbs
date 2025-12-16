@@ -1,0 +1,162 @@
+{{!-- views/lms/lesson.hbs --}}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{lesson.title}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,Arial;background:#f7f9fb;color:#07203a;margin:0}
+    .wrap{max-width:1200px;margin:18px auto;padding:0 20px}
+    .grid{display:grid;grid-template-columns:260px 1fr;gap:18px}
+    .sidebar{background:#fff;padding:14px;border-radius:10px;border:1px solid #eef4fb}
+    .sidebar a{display:block;padding:8px 10px;border-radius:8px;color:#07203a;text-decoration:none;font-weight:700;margin-bottom:6px}
+    .content{background:#fff;padding:18px;border-radius:10px;border:1px solid #eef4fb}
+    .lesson-media img{width:100%;height:auto;border-radius:8px;margin-bottom:12px}
+    .quiz{margin-top:18px;padding:12px;border-radius:10px;background:#fcfcff;border:1px solid #eef4fb}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:700}
+    .btn-gold{background:#D4AF37;color:#000}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  {{> navbar }}
+
+  <div class="wrap">
+    <div class="grid">
+      <aside class="sidebar" aria-label="Lesson navigation">
+        <strong style="display:block;margin-bottom:8px">Module: {{module.title}}</strong>
+        {{#each module.lessons}}
+          <a href="/lms/learn/{{module.course}}/{{this._id}}" style="display:block">{{this.title}}</a>
+        {{/each}}
+        <hr style="border:none;border-top:1px solid #eef4fb;margin:12px 0">
+        <a href="/lms">LMS Home</a>
+        <a href="/lms/course/{{module.course}}">Back to course</a>
+        <a href="/scoi">SCOI Framework</a>
+      </aside>
+
+      <main class="content">
+        <h1 style="margin-top:0">{{lesson.title}}</h1>
+
+        <div class="lesson-media">
+          {{#if lesson.media}}
+            {{#each lesson.media}}
+              <img src="{{this}}" alt="media">
+            {{/each}}
+          {{/if}}
+        </div>
+
+        <div class="lesson-body">
+          {{{lesson.body}}}
+        </div>
+
+        {{#if lesson.quiz}}
+          <div class="quiz" id="quizBox">
+            <h3>Quiz: {{lesson.title}}</h3>
+            <div id="quizContainer">Loading quiz...</div>
+          </div>
+        {{/if}}
+      </main>
+    </div>
+  </div>
+
+  <script>
+    (async function(){
+      const quizId = '{{lesson.quiz}}';
+      if (!quizId) return;
+      try {
+        const resp = await fetch('/api/lms/quiz/get?quizId=' + encodeURIComponent(quizId), { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error('Quiz fetch failed: ' + resp.status);
+        const data = await resp.json();
+        if (!data.quiz) return document.getElementById('quizContainer').innerText = 'Quiz not available';
+        const quiz = data.quiz;
+        const container = document.getElementById('quizContainer');
+        container.innerHTML = '';
+        const form = document.createElement('form');
+        form.id = 'quizForm';
+
+        quiz.questions.forEach((q, qi) => {
+          const qdiv = document.createElement('div');
+          qdiv.style.marginBottom = '10px';
+          const qh = document.createElement('div');
+          qh.innerHTML = `<strong>${qi+1}. ${q.text}</strong>`;
+          qdiv.appendChild(qh);
+
+          if (q.type === 'mcq' || q.type === 'multi') {
+            q.choices.forEach((c, ci) => {
+              const id = `q_${q._id}_${ci}`;
+              const wrapper = document.createElement('div');
+              const input = document.createElement('input');
+              input.type = (q.type === 'mcq') ? 'radio' : 'checkbox';
+              input.name = `q_${q._id}`;
+              input.value = ci;
+              input.id = id;
+              const label = document.createElement('label');
+              label.htmlFor = id;
+              label.style.marginLeft = '8px';
+              label.innerText = c.text;
+              wrapper.appendChild(input);
+              wrapper.appendChild(label);
+              qdiv.appendChild(wrapper);
+            });
+          } else if (q.type === 'short') {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = `q_${q._id}`;
+            input.style.width = '100%';
+            qdiv.appendChild(input);
+          }
+
+          form.appendChild(qdiv);
+        });
+
+        const submit = document.createElement('button');
+        submit.type = 'button';
+        submit.className = 'btn btn-gold';
+        submit.innerText = 'Submit Quiz';
+        submit.addEventListener('click', async () => {
+          const answers = [];
+          quiz.questions.forEach(q => {
+            const name = `q_${q._id}`;
+            if (q.type === 'mcq') {
+              const el = form.querySelector(`input[name="${name}"]:checked`);
+              if (el) answers.push({ questionId: q._id, answer: Number(el.value) });
+            } else if (q.type === 'multi') {
+              const checked = Array.from(form.querySelectorAll(`input[name="${name}"]:checked`)).map(i => Number(i.value));
+              answers.push({ questionId: q._id, answer: checked });
+            } else if (q.type === 'short') {
+              const val = (form.querySelector(`input[name="${name}"]`) || {}).value || "";
+              answers.push({ questionId: q._id, answer: val });
+            }
+          });
+
+          try {
+            const r = await fetch('/api/lms/quiz/submit', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ quizId, answers })
+            });
+            const jr = await r.json();
+            if (!r.ok) throw new Error(jr && (jr.error || jr.detail) || 'Submit failed');
+            alert('Score: ' + jr.score + '/' + jr.maxScore + ' — ' + (jr.passed ? 'Passed' : 'Failed'));
+            if (jr.certificate) {
+              const ok = confirm('You passed and a certificate was issued. Open certificate now?');
+              if (ok) window.open('/api/lms/certificate/' + jr.certificate.serial, '_blank');
+            } else {
+              location.reload();
+            }
+          } catch (e) {
+            alert('Submit error: ' + e.message);
+          }
+        });
+
+        form.appendChild(submit);
+        container.appendChild(form);
+
+      } catch (e) {
+        document.getElementById('quizContainer').innerText = 'Quiz load failed: ' + e.message;
+      }
+    })();
+  </script>
+</body>
+</html>

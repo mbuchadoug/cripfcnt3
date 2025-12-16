@@ -1,0 +1,51 @@
+{{!-- views/admin/org_modules.hbs --}}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Manage Modules | {{org.name}}</title>
+</head>
+<body>
+  {{> navbar}}
+
+  <main>
+    <h1>Manage Modules | {{org.name}}</h1>
+    <a href="/admin/orgs/{{org.slug}}/manage">← Back to org admin</a>
+
+    <hr>
+
+    <h2>Add / Update Module</h2>
+
+    <form method="POST" action="/admin/orgs/{{org.slug}}/modules">
+      <label>Module Slug (e.g. general):</label><br>
+      <input type="text" name="slug" required><br><br>
+
+      <label>Title:</label><br>
+      <input type="text" name="title" required><br><br>
+
+      <label>Description:</label><br>
+      <textarea name="description"></textarea><br><br>
+
+      <button type="submit">Save Module</button>
+    </form>
+
+    <hr>
+
+    <h2>Existing Modules</h2>
+
+    {{#if modules.length}}
+      <ul>
+        {{#each modules}}
+          <li>
+            <strong>{{this.title}}</strong>
+            ({{this.slug}})
+            | {{this.description}}
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p>No modules defined yet.</p>
+    {{/if}}
+  </main>
+</body>
+</html>

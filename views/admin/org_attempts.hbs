@@ -1,0 +1,74 @@
+{{!-- views/admin/org_attempts.hbs --}}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Attempts — {{org.name}}</title>
+  <style>
+    body { font-family: system-ui, Arial; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; max-width: 1000px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+    small { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Attempts for {{org.name}}</h1>
+  <p><a href="/admin/orgs/{{org.slug}}/manage">Back to org</a></p>
+
+  {{#if attempts.length}}
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>User</th>
+          <th>Module</th>
+          <th>Score</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each attempts}}
+          <tr>
+            <td>{{this.createdAt}}</td>
+
+            <td>
+              {{!-- Prefer populated attempt.userId --}}
+              {{#if this.userId}}
+                {{#if this.userId.name}}
+                  {{this.userId.name}}<br><small>{{this.userId.email}}</small>
+                {{else}}
+                  <small>{{this.userId.email}}</small>
+                {{/if}}
+
+              {{!-- fallback: try examMap[this.examId] (examMap passed into template) --}}
+              {{else}}
+                {{#with (lookup ../examMap this.examId)}}
+                  {{#if user}}
+                    {{#if user.name}}
+                      {{user.name}}<br><small>{{user.email}}</small>
+                    {{else}}
+                      <small>{{user.email}}</small>
+                    {{/if}}
+                  {{else}}
+                    Unknown
+                  {{/if}}
+                {{else}}
+                  Unknown
+                {{/with}}
+              {{/if}}
+            </td>
+
+            <td>{{this.module}}</td>
+            <td>{{this.score}} / {{this.maxScore}}</td>
+            <td>{{#if this.finishedAt}}Finished{{else}}In Progress{{/if}}</td>
+            <td><a href="/admin/orgs/{{../org.slug}}/attempts/{{this._id}}">View</a></td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  {{else}}
+    <p>No attempts found.</p>
+  {{/if}}
+</body>
+</html>

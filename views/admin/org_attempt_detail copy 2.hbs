@@ -1,0 +1,132 @@
+{{!-- views/admin/org_attempt_detail.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Attempt Review — {{org.name}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#ffffff;
+      --panel:#0b0b0b;
+      --muted:#6b7280;
+      --correct-bg:#e6ffea;
+      --correct-text:#054d12;
+      --wrong-bg:#ffdada;
+      --wrong-text:#6b0b0b;
+      --choice-bg:#0f1112;
+      --card-bg:#f9fafb;
+      --accent:#D4AF37;
+    }
+    body{font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:28px; color:#111}
+    a { color: #6d28d9; text-decoration: none; }
+    h1{font-size:34px;margin:0 0 6px 0}
+    .muted{color:var(--muted);margin-bottom:12px}
+    .meta{margin:12px 0 18px 0}
+    .panel{background:var(--card-bg);padding:18px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+    .q{margin-top:18px;padding:18px;border-radius:10px;background:#0f0f10;color:#fff;border:1px solid rgba(255,255,255,0.03)}
+    .q-head{font-weight:800;font-size:18px;margin-bottom:12px;color: #fff}
+    .choices{display:flex;flex-direction:column;gap:10px}
+    .choice{display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;background:#0b0c0d;color:#ddd;border:1px solid rgba(255,255,255,0.02)}
+    .choice .label{min-width:36px;height:36px;border-radius:10px;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-weight:800;color:#cbd5e1}
+    .correct{background:var(--correct-bg);color:var(--correct-text);border-color:rgba(0,150,50,0.12);font-weight:700}
+    .wrong{background:var(--wrong-bg);color:var(--wrong-text);border-color:rgba(200,30,30,0.12);font-weight:700}
+    .no-answer{color:var(--muted);font-style:italic}
+    .small{font-size:13px;color:var(--muted)}
+    .meta-row{display:flex;gap:12px;align-items:center;margin-top:8px}
+  </style>
+</head>
+<body>
+  <a href="/admin/orgs/{{org.slug}}/attempts">← Back to attempts</a>
+
+  <h1>Attempt Review — {{org.name}}</h1>
+
+  <div class="muted">User: {{#if user}}{{user.email}}{{else}}(unknown){{/if}}</div>
+
+  <div class="panel">
+    <div><strong>Module:</strong> {{attempt.module}}</div>
+    <div style="margin-top:6px"><strong>Score:</strong> {{score}} / {{total}} &nbsp; <strong>Passed:</strong> {{#if passed}}Yes{{else}}No{{/if}}</div>
+    <div class="meta-row small">
+      <div>Started: {{#if attempt.startedAt}}{{attempt.startedAt}}{{else}}-{{/if}}</div>
+      <div>Finished: {{#if attempt.finishedAt}}{{attempt.finishedAt}}{{else}}-{{/if}}</div>
+    </div>
+  </div>
+
+  {{!-- Review list --}}
+  {{#if review}}
+    {{#each review}}
+      <div class="q" style="margin-top:18px">
+        <div class="q-head">Q{{number}}. {{text}}</div>
+        <div class="choices" role="list">
+          {{#if choices.length}}
+            {{#each choices}}
+              {{!-- compute index via @index --}}
+              {{!-- compare @index to ../correctIndex and ../yourIndex --}}
+              {{!-- choose classes: correct, wrong, or default --}}
+              {{#let (eq @index ../correctIndex) as |isCorrect|}}
+                {{#let (eq @index ../yourIndex) as |isYour|}}
+                  {{!-- wrong if selected by user AND not correct --}}
+                  {{#if (and isYour (not isCorrect))}}
+                    <div class="choice wrong" role="listitem">
+                      <div class="label">{{letters @index}}</div>
+                      <div>{{this.text}}</div>
+                    </div>
+                  {{else if isCorrect}}
+                    <div class="choice correct" role="listitem">
+                      <div class="label">{{letters @index}}</div>
+                      <div>{{this.text}}</div>
+                    </div>
+                  {{else}}
+                    <div class="choice" role="listitem">
+                      <div class="label">{{letters @index}}</div>
+                      <div>{{this.text}}</div>
+                    </div>
+                  {{/if}}
+                {{/let}}
+              {{/let}}
+            {{/each}}
+          {{else}}
+            <div class="no-answer">Choices not available for this question.</div>
+          {{/if}}
+        </div>
+
+        <div style="margin-top:10px" class="small">
+          Your answer:
+          {{#if (isNull yourIndex)}}
+            <span class="no-answer">No answer</span>
+          {{else}}
+            {{#if (and (isNumber yourIndex) (gte yourIndex 0))}}
+              <strong>{{letters yourIndex}}.</strong>
+              {{#if choices.[yourIndex]}}
+                {{choices.[yourIndex].text}}
+              {{else}}
+                (choice text unavailable)
+              {{/if}}
+            {{else}}
+              <span class="no-answer">No answer</span>
+            {{/if}}
+          {{/if}}
+          <br/>
+          Correct answer:
+          {{#if (isNull correctIndex)}}
+            <span class="no-answer">(not available)</span>
+          {{else}}
+            <strong>{{letters correctIndex}}.</strong>
+            {{#if choices.[correctIndex]}}{{choices.[correctIndex].text}}{{else}}(choice text unavailable){{/if}}
+          {{/if}}
+          <br/>
+          Result: {{#if correct}}<span style="color:green;font-weight:700">Correct ✅</span>{{else}}<span style="color:#c0392b;font-weight:700">Wrong ✖</span>{{/if}}
+        </div>
+      </div>
+    {{/each}}
+  {{else}}
+    <div style="margin-top:18px" class="muted">No per-question answer details are available for this attempt.</div>
+  {{/if}}
+
+  {{!-- Helper scripts for server-side helpers (explanatory only) --}}
+  {{!-- This template expects server to provide:
+       - review: array of { number, questionId, text, choices[], correctIndex, yourIndex, correct }
+       - letters(number) helper or we supply below as inline handlebars helpers in your server setup.
+  --}}
+</body>
+</html>

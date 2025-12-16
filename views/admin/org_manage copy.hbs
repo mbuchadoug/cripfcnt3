@@ -1,0 +1,293 @@
+{{!-- admin/org_manage.hbs --}}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Manage {{org.name}}</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial;margin:18px;background:#fff;color:#111}
+    main{max-width:980px;margin:0 auto}
+    h1,h2{margin:14px 0}
+    form.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input,select,textarea{padding:8px;border:1px solid #ccc;border-radius:6px}
+    button{padding:8px 12px;border-radius:6px;background:#0b6fb7;color:#fff;border:none;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    table td, table th{border:1px solid #e6e6e6;padding:8px;text-align:left}
+    .muted{color:#666;font-size:13px}
+    .small{font-size:13px}
+    .inline-form{display:inline-block;margin:0}
+    .badge{display:inline-block;padding:4px 8px;border-radius:12px;background:#f1f1f1;color:#333}
+    .success{color:green}
+    .error{color:red}
+    .notice{margin-top:8px;color:#333}
+  </style>
+</head>
+<body>
+  {{> navbar}}
+  <main>
+    <h1>Manage {{org.name}}</h1>
+
+    <section>
+      <h2>Invites</h2>
+
+      <!-- AJAX invite form -->
+      <form class="row" data-ajax="invite" method="post" action="/admin/orgs/{{org.slug}}/invite">
+        <label style="flex:1">
+          Email:
+          <input name="email" placeholder="employee@example.com" required />
+        </label>
+
+        <label>
+          Role:
+          <select name="role">
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+          </select>
+        </label>
+
+        <button type="submit">Send Invite</button>
+      </form>
+
+      <div id="inviteFeedback" class="notice"></div>
+
+      <h3 style="margin-top:16px">Existing Invites</h3>
+      <ul id="invitesList">
+        {{#each invites}}
+          <li data-invite-id="{{this._id}}">
+            <span class="small">{{this.email}}</span>
+            <span class="muted"> | token: <code>{{this.token}}</code></span>
+            <span class="badge">{{#if this.used}}Used{{else}}Pending{{/if}}</span>
+            <span class="muted"> | created {{this.createdAt}}</span>
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+
+    <hr />
+
+    <section>
+      <h2>Members</h2>
+
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="membersTbody">
+        {{#each memberships}}
+          <tr data-user-id="{{this.user._id}}">
+            <td>{{this.user.fullName}}</td>
+            <td>{{this.user.email}}</td>
+            <td class="roleCell">{{this.role}}</td>
+            <td>
+              <!-- Promote to Manager -->
+              <form class="inline-form" data-ajax="member" method="post" action="/admin/orgs/{{../org.slug}}/members/{{this.user._id}}">
+                <input type="hidden" name="action" value="promote" />
+                <input type="hidden" name="role" value="manager" />
+                <button type="submit">Promote to Manager</button>
+              </form>
+
+              <!-- Demote to Employee -->
+              <form class="inline-form" data-ajax="member" method="post" action="/admin/orgs/{{../org.slug}}/members/{{this.user._id}}">
+                <input type="hidden" name="action" value="demote" />
+                <button type="submit">Demote</button>
+              </form>
+
+              <!-- Remove -->
+              <form class="inline-form" data-ajax="member" method="post" action="/admin/orgs/{{../org.slug}}/members/{{this.user._id}}">
+                <input type="hidden" name="action" value="remove" />
+                <button type="submit" style="background:#c43">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {{/each}}
+        </tbody>
+      </table>
+      <div id="memberFeedback" class="notice"></div>
+    </section>
+
+    <hr />
+
+    <section>
+      <h2>Modules</h2>
+      <a href="/admin/orgs/{{org.slug}}/modules">Manage Modules</a>
+      {{#if modules.length}}
+        <div style="margin-top:10px" class="small">
+          Modules: {{#each modules}}<span class="badge" style="margin-right:6px">{{this.title}} ({{this.slug}})</span>{{/each}}
+        </div>
+      {{else}}
+        <p class="muted small">No modules defined yet.</p>
+      {{/if}}
+    </section>
+
+    <hr/>
+
+    <section>
+     <h2>Assign Quiz (bulk)</h2>
+
+<form method="post" action="/admin/orgs/{{org.slug}}/assign-quiz">
+  <p>Select members to assign a {{count}}-question quiz for the chosen module.
+     This will create an exam instance per selected user.</p>
+
+  <div class="field">
+    <label for="module">Module:</label>
+    <select id="module" name="module">
+      {{#each modules}}
+        <option value="{{this.slug}}">{{this.title}} ({{this.slug}})</option>
+      {{/each}}
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="userIds">Users:</label>
+    <select id="userIds" name="userIds" multiple size="6" required>
+      {{#each memberships}}
+        {{#if this.user}}
+          <option value="{{this.user._id}}">
+            {{this.user.email}} ({{this.role}})
+          </option>
+        {{/if}}
+      {{/each}}
+    </select>
+    <p><small>Hold Ctrl/Cmd to select multiple users.</small></p>
+  </div>
+
+  <div class="field">
+    <label for="count">Count:</label>
+    <input id="count" name="count" type="number" min="1" max="100" value="20">
+  </div>
+
+  <div class="field">
+    <label for="expiresMinutes">Expires (mins):</label>
+    <input id="expiresMinutes" name="expiresMinutes" type="number" min="5" max="1440" value="60">
+  </div>
+
+  <button type="submit">Assign Quiz</button>
+</form>
+
+
+      <div id="assignResult" class="notice"></div>
+    </section>
+
+  </main>
+
+  <script>
+    // helper: convert FormData -> object (handles multiple selects)
+    function formToObject(form) {
+      const fd = new FormData(form);
+      const obj = {};
+      for (const [k, v] of fd.entries()) {
+        if (obj[k] !== undefined) {
+          // convert to array
+          if (!Array.isArray(obj[k])) obj[k] = [obj[k]];
+          obj[k].push(v);
+        } else {
+          obj[k] = v;
+        }
+      }
+      // handle multi-select named "userIds" which may be multiple values
+      if (form.querySelector('[name="userIds"]')) {
+        const select = form.querySelector('[name="userIds"]');
+        const vals = Array.from(select.selectedOptions).map(o => o.value);
+        obj.userIds = vals;
+      }
+      return obj;
+    }
+
+    // AJAX invite form
+    document.querySelectorAll('form[data-ajax="invite"]').forEach(f => {
+      f.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const url = f.action;
+        const payload = formToObject(f);
+        try {
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json();
+          const fb = document.getElementById('inviteFeedback');
+          if (!resp.ok) {
+            fb.innerHTML = '<span class="error">Invite failed: ' + (data.error || 'unknown') + '</span>';
+            return;
+          }
+          fb.innerHTML = '<span class="success">Invite created. Token: <code>' + (data.token || '') + '</code></span>';
+          // append to invites list
+          const ul = document.getElementById('invitesList');
+          const li = document.createElement('li');
+          li.innerHTML = `${payload.email} | token: <code>${data.token}</code> — <span class="badge">Pending</span>`;
+          ul.prepend(li);
+          f.reset();
+        } catch (e) {
+          console.error(e);
+          document.getElementById('inviteFeedback').innerHTML = '<span class="error">Invite failed (network)</span>';
+        }
+      });
+    });
+
+    // Member action buttons (promote/remove/demote)
+    document.querySelectorAll('form[data-ajax="member"]').forEach(f => {
+      f.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const url = f.action;
+        const payload = formToObject(f);
+        try {
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json();
+          const fb = document.getElementById('memberFeedback');
+          if (!resp.ok) {
+            fb.innerHTML = '<span class="error">Action failed: ' + (data.error || 'unknown') + '</span>';
+            return;
+          }
+          fb.innerHTML = '<span class="success">Action: ' + (data.action || 'ok') + '</span>';
+          // update UI accordingly
+          const row = f.closest('tr');
+          if (data.action === 'removed') {
+            if (row) row.remove();
+          } else if (data.action === 'promoted' || data.action === 'demoted') {
+            if (row) {
+              const roleCell = row.querySelector('.roleCell');
+              if (roleCell) roleCell.textContent = data.role || (data.action === 'demoted' ? 'employee' : 'manager');
+            }
+          }
+        } catch (e) {
+          console.error(e);
+          document.getElementById('memberFeedback').innerHTML = '<span class="error">Action failed (network)</span>';
+        }
+      });
+    });
+
+    // Assign quiz (AJAX)
+    async function assignQuiz(form) {
+      const url = form.action;
+      const payload = formToObject(form);
+      // ensure userIds is array
+      if (!Array.isArray(payload.userIds)) payload.userIds = payload.userIds ? [payload.userIds] : [];
+      document.getElementById('assignResult').textContent = 'Assigning...';
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          document.getElementById('assignResult').innerHTML = '<span class="error">Assign failed: ' + (data.error || 'unknown') + '</span>';
+          return false;
+        }
+        document.getElementById('assignResult').innerHTML = '<span class="success">Assigned ' + (data.assigned ? data.assigned.length : 0) + ' users.</span>';
+        console.log('assigned details', data.assigned);
+        return false;
+      } catch (e) {
+        console.error(e);
+        document.getElementById('assignResult').innerHTML = '<span class="error">Assign failed (network)</span>';
+        return false;
+      }
+    }
+  </script>
+</body>
+</html>

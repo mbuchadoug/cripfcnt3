@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Organizations — Admin</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <style>
+    body{
+      font-family: system-ui, -apple-system, "Segoe UI", Arial;
+      margin:0;
+      background:#f8fafc;
+      color:#07203a;
+    }
+
+    main{
+      max-width:1000px;
+      margin:24px auto;
+      padding:0 20px;
+    }
+
+    h1{
+      font-size:32px;
+      margin-bottom:10px;
+    }
+
+    .top-actions{
+      margin-bottom:16px;
+    }
+
+    .primary-btn{
+      display:inline-block;
+      padding:10px 14px;
+      border-radius:8px;
+      background:#0b63d6;
+      color:#fff;
+      text-decoration:none;
+      font-weight:700;
+      font-size:14px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      background:#fff;
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 10px 30px rgba(11,37,69,0.06);
+    }
+
+    th, td{
+      padding:14px 16px;
+      text-align:left;
+      border-bottom:1px solid #eef4fb;
+      font-size:14px;
+    }
+
+    th{
+      background:#f4f7fb;
+      font-weight:800;
+      color:#334155;
+    }
+
+    tr:last-child td{
+      border-bottom:none;
+    }
+
+    .actions a{
+      display:inline-block;
+      margin-right:8px;
+      padding:6px 10px;
+      border-radius:6px;
+      text-decoration:none;
+      font-weight:700;
+      font-size:13px;
+      color:#0b63d6;
+      border:1px solid #e5edf8;
+      background:#f8fbff;
+    }
+
+    .actions a.manage{
+      background:#0b63d6;
+      color:#fff;
+      border-color:#0b63d6;
+    }
+
+    .actions a.edit{
+      color:#6b7280;
+    }
+  </style>
+</head>
+<body>
+
+  {{> navbar}}
+
+  <main>
+    <h1>Organizations</h1>
+
+    <div class="top-actions">
+      <a href="/admin/orgs/create" class="primary-btn">
+        ➕ Create New Organization
+      </a>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Slug</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each orgs}}
+          <tr>
+            <td><strong>{{this.name}}</strong></td>
+            <td><code>{{this.slug}}</code></td>
+            <td class="actions">
+              <a href="/admin/orgs/{{this.slug}}">View</a>
+              <a href="/admin/orgs/{{this.slug}}/manage" class="manage">Manage</a>
+              <a href="/admin/orgs/{{this.slug}}/edit" class="edit">Edit</a>
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </main>
+
+</body>
+</html>

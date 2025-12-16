@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{title}}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #f9fafb; font-family: 'Inter', sans-serif; color: #111827; }
+    .card {
+      background: #fff;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid #e5e7eb;
+      margin-bottom: 1.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(4px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+    .card h3 { font-size: 1.125rem; font-weight: 700; color: #1e3a8a; margin-bottom: 0.75rem; }
+    .card p { color: #374151; line-height: 1.7; font-size: 1rem; margin-bottom: 0.5rem; }
+    .badge {
+      display: inline-block;
+      background-color: #2563eb;
+      color: white;
+      padding: 0.25rem 0.6rem;
+      border-radius: 0.4rem;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-right: 0.3rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8">
+  <div class="w-full max-w-5xl px-4">
+    <h1 class="text-3xl font-extrabold text-blue-900 mb-3">CRIPFCnt SCOI Audit</h1>
+    <p class="text-gray-700 mb-8">
+      Enter an organization or entity name to perform a live CRIPFCnt audit powered by OpenAI.
+    </p>
+
+    <div class="flex gap-3 mb-8">
+      <input id="entityInput" type="text"
+        placeholder="e.g., Lafarge, Econet, Apple"
+        class="flex-grow border border-gray-300 rounded-xl px-4 py-3 text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+      <button id="analyzeBtn"
+        class="bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl px-6 py-3 transition">
+        Analyze
+      </button>
+    </div>
+
+    <div id="loading" class="hidden text-blue-600 font-medium mb-6 flex items-center gap-2">
+      <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      Running CRIPFCnt SCOI Audit...
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const entityInput = document.getElementById("entityInput");
+    const output = document.getElementById("output");
+    const loading = document.getElementById("loading");
+
+    analyzeBtn.addEventListener("click", runAudit);
+    entityInput.addEventListener("keypress", (e) => { if (e.key === "Enter") runAudit(); });
+
+    async function runAudit() {
+      const entity = entityInput.value.trim();
+      if (!entity) return alert("Please enter an organization or entity name.");
+
+      output.innerHTML = "";
+      loading.classList.remove("hidden");
+
+      const response = await fetch("/api/chat-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity }),
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop();
+
+        for (const part of parts) {
+          if (!part.startsWith("data:")) continue;
+          const text = part.replace("data:", "").trim();
+          if (text === "[DONE]") {
+            loading.classList.add("hidden");
+            return;
+          }
+          renderText(text);
+        }
+      }
+
+      loading.classList.add("hidden");
+    }
+
+    let currentCard = null;
+
+    function renderText(text) {
+      if (!text) return;
+
+      const newSection = /^(1️⃣|2️⃣|3️⃣|4️⃣|5️⃣|6️⃣|Visibility|Contribution|SCOI|Adjusted|Final)/i.test(text);
+
+      if (newSection) {
+        currentCard = document.createElement("div");
+        currentCard.className = "card";
+
+        const [title, ...rest] = text.split(/[-–:]/);
+        currentCard.innerHTML = `<h3>${title.trim()}</h3><p>${rest.join(":").trim()}</p>`;
+        output.appendChild(currentCard);
+      } else if (currentCard) {
+        currentCard.innerHTML += `<p>${text}</p>`;
+      } else {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `<p>${text}</p>`;
+        output.appendChild(card);
+      }
+    }
+  </script>
+</body>
+</html>

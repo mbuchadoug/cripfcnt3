@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f5f7fa;
+    }
+
+    h1 {
+      color: #003366;
+      font-weight: 800;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #333;
+    }
+
+    input, button {
+      padding: 8px;
+      margin: 4px 0;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #0066cc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s ease-in-out;
+    }
+
+    button:hover {
+      background: #004c99;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      margin: 1rem 0;
+      padding: 1rem 1.2rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .card-header {
+      font-weight: 700;
+      color: #003366;
+      font-size: 15px;
+      text-transform: uppercase;
+      border-bottom: 2px solid #00336630;
+      padding-bottom: 6px;
+      margin-bottom: 0.6rem;
+    }
+
+    #output {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 1rem;
+      font-family: "Inter", sans-serif;
+      font-size: 15px;
+      color: #222;
+      line-height: 1.7;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    /* 🔄 Loading spinner */
+    .loader {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e0e0e0;
+      border-top: 4px solid #0066cc;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-top: 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Optional "loading" text */
+    .loading-text {
+      font-size: 1rem;
+      color: #003366;
+      margin-top: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>{{title}}</h1>
+  <p>{{message}}</p>
+
+  <input id="entity" type="text" placeholder="e.g., Lafarge">
+  <button onclick="startChat()">Analyze</button>
+
+  <div id="output"></div>
+
+  <script>
+    async function startChat() {
+      const entity = document.getElementById("entity").value.trim();
+      if (!entity) return alert("Enter a company name");
+
+      const output = document.getElementById("output");
+      output.innerHTML = `
+        <b>🔍 SCOI Audit — ${entity}</b><br><br>
+        <div class="loader"></div>
+        <div class="loading-text">Analyzing data, please wait...</div>
+      `;
+
+      try {
+        const res = await fetch("/api/chat-stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entity })
+        });
+
+        if (!res.body) throw new Error("No response stream from server.");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        // Live stream reading
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          fullText += decoder.decode(value, { stream: true });
+        }
+
+        // ✅ Clean and normalize
+        let cleaned = fullText
+          .replace(/data:\s*/g, "")
+          .replace(/\[DONE\]/g, "")
+          .replace(/\s+/g, " ")
+          .replace(/(\d)\s*\.\s*(\d)/g, "$1.$2")
+          .replace(/\bSCO\s*I\b/gi, "SCOI")
+          .replace(/\bER\s*F\b/gi, "ERF")
+          .replace(/\bInn\s*sc\s*or\b/gi, "Innscor")
+          .replace(/\bL\s*af\s*ar\s*ge\b/gi, "Lafarge")
+          .replace(/\bCR\s*IP\s*FC\s*nt\b/gi, "CRIPFCnt")
+          .replace(/\bD\s*el\s*ta\b/gi, "Delta")
+          .replace(/\bNya\s*rad\s*zo\b/gi, "Nyaradzo")
+          .replace(/\s,/, ",")
+          .replace(/\s\./g, ".")
+          .trim();
+
+        cleaned = cleaned.replace(/\b([A-Z])\s+([a-z]+)/g, "$1$2");
+
+        // Split into sections
+        const sections = cleaned
+          .split(/(?=\d+\s*[️⃣]\s*)/)
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        // Convert to cards
+        let formatted = sections.map(sec => `
+          <div class="card">
+            <div class="card-header">${sec.match(/^\d+\s*[️⃣]\s*[^\d]*/)?.[0] || "Section"}</div>
+            <div>${sec.replace(/^\d+\s*[️⃣]\s*[^\d]*/, "").trim()}</div>
+          </div>
+        `).join("<br>");
+
+        // Highlight important terms
+        formatted = formatted
+          .replace(/(\d+(\.\d+)?\s*[×\/]\s*\d+(\.\d+)?)/g, "<b>$1</b>")
+          .replace(/\b(SCOI\s*=?\s*[\d.]+)/gi, "<b style='color:#004c99;'>$1</b>")
+          .replace(/\b(ERF\s*=?\s*[\d.]+)/gi, "<b style='color:#006600;'>$1</b>")
+          .replace(/\b(Visibility|Contribution|Adjustment|Commentary|Environment|Calculation|Rationale|Score)\b/gi, "<b style='color:#003366;'>$1</b>");
+
+        // ✅ Replace loader with results
+        output.innerHTML = formatted;
+
+      } catch (err) {
+        output.innerHTML = `❌ Error: ${err.message}`;
+      }
+    }
+  </script>
+</body>
+</html>

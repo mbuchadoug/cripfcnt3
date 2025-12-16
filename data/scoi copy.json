@@ -1,0 +1,90 @@
+{
+  "econet": {
+    "VI": 85,
+    "NE": 15,
+    "I": 60
+  },
+  "nyaradzo group of companies": {
+    "VI": 80,
+    "NE": 30,
+    "I": 60
+  },
+  "netone zimbabwe": {
+    "VI": 70,
+    "NE": 30,
+    "I": 60
+  },
+  "telecel zimbabwe": {
+    "VI": 75,
+    "NE": 30,
+    "I": 60
+  },
+  "telecel": {
+    "VI": 80,
+    "NE": 30,
+    "I": 60,
+    "SCOI": "0.83"
+  },
+  "whats the scoi for telecel": {
+    "VI": 75,
+    "NE": 30,
+    "I": 60,
+    "explanation": "Telecel, as a telecommunications provider, has a significant voluntary impact (VI) due to its contribution to digital connectivity and societal development. The Negative Externalities (NE) are relatively low, as telecom services generally have manageable environmental and social impacts compared to other industries. Income Dependence (I) reflects a moderate reliance on income from telecommunications, which is essential for many individuals and businesses, but not as critical as necessities like food or housing."
+  },
+  "lafarge": {
+    "VI": 85,
+    "NE": 40,
+    "I": 70,
+    "explanation": "Lafarge demonstrates a strong commitment to corporate social responsibility and sustainability, significantly impacting local communities and the environment. Their initiatives indicate a high voluntary impact score. However, the cement industry often has inherent environmental drawbacks, leading to notable negative externalities. Income dependence is moderately high due to their prominent role in infrastructure and construction, which is crucial for economic development but also vulnerable to economic fluctuations.",
+    "sources": "LafargeHolcim Sustainability Report 2022: https://www.lafargeholcim.com/sustainability; LafargeHolcim: Corporate Social Responsibility Overview: https://www.lafargeholcim.com/corporate-social-responsibility; Lafarge's Carbon Program Overview: https://www.lafarge.com/en/commitment-to sustainability"
+  },
+  "delta": {
+    "VI": 85,
+    "NE": 60,
+    "I": 40,
+    "explanation": "Delta demonstrates a high level of voluntary impact (85) through its aggressive targets for carbon neutrality and substantial community engagement initiatives. The investment in sustainable aviation fuel and fuel efficiency reflects significant efforts towards environmental responsibility. Negative externalities (60) are present due to the nature of the airline industry, which inherently contributes to greenhouse gas emissions. However, Delta's initiatives mitigate some of these negative effects. Income dependence (40) is moderate as the company is reliant on consumer demand for air travel, which can be influenced by economic fluctuations. Overall, Delta's integrated sustainability strategies are commendable but still face challenges typical of the airline sector.",
+    "sources": "Delta's Environmental Commitment: [Delta Air Lines](https://www.delta.com/us/en/about-delta/our-commitments/environmental-sustainability), Delta One Report on Sustainability: [Delta's 2022 Sustainability Report](https://www.delta.com/us/en/about-delta/sustainability/report), Delta's CSR Initiatives: [Delta News Hub](https://news.delta.com/corporate-social-responsibility)"
+  },
+  "innscor": {
+    "VI": 85,
+    "NE": 30,
+    "I": 70,
+    "explanation": "Innscor demonstrates a strong commitment to voluntary initiatives with significant community development projects, environmental sustainability efforts, and economic empowerment strategies contributing positively to local development, resulting in a high Voluntary Impact score. The Negative Externalities score is moderate due to potential environmental impacts associated with industrial operations, though they are actively working to minimize these. Income Dependence is relatively high because the company's success heavily relies on local economies and market conditions, making their operations vulnerable to economic fluctuations in these areas.",
+    "sources": "1. Innscor Africa Limited - Corporate Social Responsibility: https://innscorafrica.com/csr; 2. Zimbabwe Environmental Law Association - Innscor and Its Environmental Policy: http://zela.org/innscor-environmental-policy; 3. Innscor Annual Report 2022: https://innscorafrica.com/annual-reports"
+  },
+  "zimplats": {
+    "VI": 4,
+    "NE": 3,
+    "I": 5,
+    "explanation": "Zimplats, or Zimbabwe Platinum Holdings Limited, is a key player in the platinum mining industry located in Zimbabwe. It operates the Ngezi Platinum Mine and the Mimosa mine, which are among the largest platinum operations in the country. Zimplats is primarily focused on the extraction and processing of platinum group metals (PGMs), including platinum, palladium, and rhodium.\n\nThe company is known for its significant contributions to the local economy and employs a substantial workforce, providing direct and indirect jobs in the region. Zimplats emphasizes sustainable mining practices and community engagement, aiming to minimize environmental impact and support local development initiatives.\n\nAdditionally, Zimplats is listed on the Australian Stock Exchange (ASX) and is a subsidiary of the South African company Impala Platinum Holdings Limited (Implats). The company plays a crucial role in Zimbabwe's mining sector, which is a significant driver of the national economy. \n\nOverall, Zimplats is recognized for its operational efficiency, commitment to sustainability, and its role in contributing to the growth of the platinum mining industry in Zimbabwe.",
+    "sources": ""
+  },
+  "old mutual": {
+    "VI": 0,
+    "NE": 9,
+    "I": 1,
+    "explanation": "Old Mutual is a South African financial services group that provides a range of services, including life insurance, asset management, and banking. Founded in 1845, it has a long history and has expanded its operations beyond South Africa to various markets across Africa, the UK, and the US.\n\nThe company was initially a mutual organization, which means it was owned by its policyholders. In recent years, Old Mutual has undergone significant restructuring, including a major separation into distinct entities to enhance focus on specific markets and services.\n\nOld Mutual is known for its commitment to sustainability and responsible investing, offering products that include individual and group life insurance, retirement solutions, investment management, and more. The company is publicly traded on the Johannesburg Stock Exchange and has also been listed on the London Stock Exchange.\n\nOverall, Old Mutual is recognized as one of the leading financial services providers in Africa, leveraging its extensive experience and resources to serve a diverse clientele.",
+    "sources": ""
+  },
+  "nyaradzo group": {
+    "VI": 9,
+    "NE": 6,
+    "I": 3,
+    "explanation": "Nyaradzo Group is a notable diversified company based in Zimbabwe, primarily involved in the funeral services industry. Founded in 1993, it has grown to become one of the leading funeral service providers in the country, offering a range of products and services, including burial services, funeral insurance, and related support.\n\nIn addition to its core funeral services, Nyaradzo has expanded into other areas such as property development and investments, effectively diversifying its portfolio. The company is known for its commitment to customer service and has introduced various innovative solutions to meet the needs of its clientele.\n\nNyaradzo Group is also involved in community initiatives and social responsibility programs, reflecting its commitment to giving back to society. Overall, it stands out as a significant player in Zimbabwe's service industry, recognized for its professionalism and comprehensive service offerings.",
+    "sources": ""
+  },
+  "cafca": {
+    "VI": 9,
+    "NE": 6,
+    "I": 1,
+    "explanation": "As of my last knowledge update, \"CAFCA\" can refer to various organizations, acronyms, or terms depending on the context. Here are a couple of notable references:\n\n1. **CAFCA (Central African Federation of Customs)**: A regional body focused on customs cooperation and trade facilitation among member countries. Its goal is to streamline processes and policies to enhance trade within Central Africa.\n\n2. **CAFCA (Computer Aid for Community Action)**: An organization that uses technology to aid community service and development initiatives, promoting social change through digital means.\n\n3. **CAFCA (Capital Area Food Bank of Central Alabama)**: A food bank organization dedicated to addressing hunger in the Central Alabama area through food distribution and community programs.\n\nIf you're looking for something more specific or different, please provide additional context!",
+    "sources": ""
+  },
+  "african sun limited": {
+    "VI": 5,
+    "NE": 0,
+    "I": 1,
+    "explanation": "African Sun Limited is a hospitality and entertainment company based in Zimbabwe. It operates a portfolio of hotels and resorts, primarily targeting both leisure and business travelers. The company has a significant presence in major tourist destinations within Zimbabwe and aims to provide high-quality services and accommodations.\n\nAfrican Sun Limited is known for its focus on enhancing the tourism sector in Zimbabwe, contributing to the local economy, and promoting sustainable practices. The company may also engage in various community development initiatives. \n\nOver the years, it has navigated various challenges, including economic fluctuations and changes in the tourism landscape, but continues to play a key role in the hospitality industry in the region. For the latest updates, including developments and performance, it's advisable to check their official website or recent news articles.",
+    "sources": ""
+  }
+}

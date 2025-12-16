@@ -1,0 +1,100 @@
+{{!-- views/lms/course.hbs --}}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{course.title}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,Arial;background:#fff;color:#07203a;margin:0}
+    .wrap{max-width:1200px;margin:18px auto;padding:0 20px}
+    .grid{display:grid;grid-template-columns:260px 1fr;gap:18px}
+    .sidebar{background:#fff;padding:14px;border-radius:10px;border:1px solid #eef4fb}
+    .sidebar a{display:block;padding:8px 10px;border-radius:8px;color:#07203a;text-decoration:none;font-weight:700;margin-bottom:6px}
+    .course-hero{background-image:url('{{course.heroImage}}');background-size:cover;background-position:center;border-radius:12px;padding:18px;color:#fff}
+    .modules{margin-top:12px}
+    .lesson-link{display:block;padding:8px;border-radius:8px;margin-bottom:6px;background:#f7f9fb;text-decoration:none;color:#07203a}
+    .btn{padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:700}
+    .btn-gold{background:#D4AF37;color:#000}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}.course-hero{padding:12px}}
+  </style>
+</head>
+<body>
+  {{> navbar }}
+
+  <div class="wrap">
+    <div class="course-hero">
+      <h1 style="margin:0;color:#D4AF37">{{course.title}}</h1>
+      <p style="margin:8px 0 0 0">{{course.shortDescription}}</p>
+      <div style="margin-top:12px">
+        {{#if user}}
+          <a class="btn btn-gold" href="#" onclick="enroll('{{course._id}}');return false;">Start Learning</a>
+        {{else}}
+          <a class="btn btn-gold" href="/auth/google">Sign in to start</a>
+        {{/if}}
+        <a class="btn" href="#modules" style="margin-left:8px;border:1px solid #eef4fb">View modules</a>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:16px">
+      <aside class="sidebar" aria-label="Course navigation">
+        <strong style="display:block;margin-bottom:8px">Course navigation</strong>
+        <a href="/lms">LMS Home</a>
+        <a href="#modules">Modules & Lessons</a>
+        <a href="#features">How the LMS works</a>
+        <a href="#cert">Certification</a>
+        <a href="/scoi">SCOI Framework</a>
+        {{#if user}}<a href="/admin">Admin</a>{{/if}}
+      </aside>
+
+      <main>
+        <section id="modules">
+          <h2 style="margin-top:0">Modules</h2>
+          {{#each course.sections}}
+            <div style="margin-bottom:12px;padding:12px;border-radius:8px;border:1px solid #eef4fb;background:#fff">
+              <strong>{{this.title}}</strong>
+              <div style="margin-top:8px">
+                {{#each this.lessons}}
+                  <a class="lesson-link" href="/lms/learn/{{../course._id}}/{{this._id}}">{{this.title}}</a>
+                {{/each}}
+              </div>
+            </div>
+          {{/each}}
+        </section>
+
+        <section id="features" style="margin-top:8px">
+          <h3>How the LMS works</h3>
+          <p style="color:#555">Modular lessons, micro-tests, and a final exam that issues a verified certificate when you pass.</p>
+        </section>
+
+        <section id="cert" style="margin-top:8px">
+          <h3>Certification Pathway</h3>
+          <ol style="color:#555">
+            <li>Intro | 15 minutes</li>
+            <li>Placement Responsibility Modules</li>
+            <li>Decision Simulations</li>
+            <li>Final Exam — pass to receive certificate</li>
+          </ol>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    async function enroll(courseId){
+      try {
+        const res = await fetch('/api/lms/enroll', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ courseId })});
+        const j = await res.json();
+        if (j && j.success) {
+          alert('Enrolled | open first lesson from Modules.');
+          location.reload();
+        } else {
+          alert('Enroll failed: ' + (j && j.error));
+        }
+      } catch (e) {
+        alert('Enroll failed: ' + e.message);
+      }
+    }
+  </script>
+</body>
+</html>

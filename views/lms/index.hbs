@@ -1,0 +1,365 @@
+{{!-- views/lms/index.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>RESPONSIBILITY LMS | CRIPFCnt</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --gold:#D4AF37;
+      --black:#000000;
+      --charcoal:#1B1B1B;
+      --white:#F5F5F5;
+      --muted:#9AA3AD;
+      --card-shadow: 0 18px 60px rgba(3,7,18,0.35);
+      --radius:14px;
+      --maxw:1200px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#050505 0%, #0b0b0b 100%);
+      color:var(--white);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    a{color:inherit;text-decoration:none}
+    .container{max-width:var(--maxw);margin:36px auto;padding:0 22px}
+
+    /* Top nav inside page (keeps visible even if partial missing) */
+    .top-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .nav-left{display:flex;gap:12px;align-items:center}
+    .brand{font-weight:900;color:var(--gold);letter-spacing:0.6px}
+    .nav-links{display:flex;gap:10px;align-items:center}
+    .nav-links a{color:var(--muted);padding:8px 10px;border-radius:8px;font-weight:700}
+    .nav-links a:hover{color:var(--white);background:rgba(255,255,255,0.02)}
+
+    /* HERO */
+    .hero {
+      border-radius:18px;
+      overflow:hidden;
+      position:relative;
+      display:block;
+      background:#000;
+      box-shadow:var(--card-shadow);
+      min-height:420px;
+    }
+    .hero-media{
+      position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(0.45) contrast(1.02);
+    }
+    .hero-overlay{position:relative;z-index:2;padding:56px 56px;display:flex;gap:36px;align-items:center}
+    .hero-left{flex:1;max-width:720px}
+    .eyebrow{display:inline-block;padding:8px 14px;border-radius:999px;background:rgba(212,175,55,0.12);color:var(--gold);font-weight:800;font-size:13px}
+    h1{font-size:46px;line-height:1.02;margin:14px 0 10px;color:var(--gold);font-weight:900;letter-spacing:0.6px}
+    .subtitle{color:rgba(255,255,255,0.92);font-size:18px;max-width:720px}
+    .lead{margin-top:14px;color:rgba(255,255,255,0.85);font-size:15px;max-width:740px}
+    .hero-ctas{margin-top:20px;display:flex;gap:12px;flex-wrap:wrap}
+    .btn{display:inline-block;padding:12px 18px;border-radius:10px;font-weight:800;font-size:14px}
+    .btn-primary{background:var(--gold);color:#000}
+    .btn-outline{background:transparent;border:2px solid rgba(212,175,55,0.95);color:rgba(255,255,255,0.95)}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--white)}
+
+    /* hero right card */
+    .hero-right{width:360px;min-width:260px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));border-left:1px solid rgba(255,255,255,0.04);padding:18px;border-radius:0 0 0 0;position:relative}
+    .hero-card-title{font-weight:800;color:var(--white);font-size:16px}
+    .hero-card-sub{color:var(--muted);font-size:13px;margin-top:8px}
+    .hero-card-cta{margin-top:12px;display:flex;gap:8px}
+
+    /* layout for the rest */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:28px}
+    .section{
+      display:flex;gap:18px;align-items:center;padding:22px;border-radius:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .section img{width:100%;height:auto;border-radius:8px;object-fit:cover}
+    .section-left{flex:1;min-width:300px}
+    .section-right{flex:1;min-width:260px}
+    .section h2{margin:0 0 8px 0;color:var(--gold);font-size:22px}
+    .section p{margin:0;color:rgba(255,255,255,0.88) }
+
+    /* placement grid & features */
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px}
+    .feature-card{padding:18px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
+    .feature-card h3{margin:0;color:var(--gold);font-size:16px}
+    .feature-card p{margin-top:8px;color:var(--muted);font-size:14px}
+
+    /* modules / lessons list */
+    .course-block{margin-top:24px;padding:18px;border-radius:12px;background:linear-gradient(180deg,#060606,#0b0b0b);border:1px solid rgba(255,255,255,0.03)}
+    .course-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .course-title{font-size:20px;color:var(--gold);font-weight:900}
+    .course-meta{color:var(--muted);font-size:13px}
+    .modules{margin-top:12px;display:grid;gap:12px}
+    .module{padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.06));border:1px solid rgba(255,255,255,0.02)}
+    .module h4{margin:0;color:#fff}
+    .lessons{margin-top:8px}
+    .lesson-link{display:inline-block;padding:8px 10px;margin:6px 8px 6px 0;border-radius:8px;background:#0f1112;color:var(--white);border:1px solid rgba(255,255,255,0.04);font-size:13px}
+
+    /* final CTA / footer block */
+    .final-cta{margin-top:22px;padding:18px;border-radius:12px;background:linear-gradient(90deg,#070707,#0d0d0d);display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.03)}
+    .final-cta h3{margin:0;color:var(--gold)}
+    .final-cta p{margin:0;color:var(--muted)}
+
+    /* footer links row */
+    .footer-links{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:980px){
+      .hero-overlay{flex-direction:column;padding:30px}
+      .hero-right{width:100%}
+      .two-col{grid-template-columns:1fr}
+      .grid-3{grid-template-columns:1fr}
+      h1{font-size:36px}
+      .course-header{flex-direction:column;align-items:flex-start;gap:8px}
+    }
+    @media (max-width:480px){
+      h1{font-size:26px}
+      .eyebrow{padding:6px 10px;font-size:12px}
+      .btn{padding:10px 12px;font-size:13px}
+    }
+  </style>
+</head>
+<body>
+  {{> navbar }}
+
+  <div class="container" role="main">
+
+    <!-- Top nav (redundant / fallback) -->
+    <div class="top-nav" role="navigation" aria-label="LMS quick nav">
+      <div class="nav-left">
+        <div class="brand">CRIPFCnt · Responsibility LMS</div>
+        <div class="nav-links" aria-hidden="false">
+          <a href="/lms">Home</a>
+          <a href="/lms#modules">Courses</a>
+          <a href="/lms/quiz">Quiz</a>
+          <a href="/scoi">SCOI</a>
+          <a href="/contact">Contact</a>
+          {{#if user}}
+            <a href="/admin">Admin</a>
+            <a href="/admin/lms/questions">Manage Qs</a>
+          {{/if}}
+        </div>
+      </div>
+
+      <div>
+        {{#if user}}
+          <a href="/auth/logout" style="color:var(--muted);font-weight:700">Sign out</a>
+        {{else}}
+          <a href="/auth/google" style="color:var(--muted);font-weight:700">Sign in</a>
+        {{/if}}
+      </div>
+    </div>
+
+    <!-- HERO -->
+    <header class="hero" role="banner" aria-label="Responsibility LMS hero">
+      <div class="hero-media" style="background-image:url('{{#if courses.[0].heroImage}}{{courses.[0].heroImage}}{{else}}/pics/pic3.jpeg{{/if}}')"></div>
+
+      <div class="hero-overlay" role="region" aria-label="Hero content">
+        <div class="hero-left">
+          <div class="eyebrow">RESPONSIBILITY LMS</div>
+          <h1>Responsibility Is The First Architecture Of Civilization</h1>
+          <div class="subtitle">Learn the structural discipline that stabilizes consciousness, strengthens purpose, and recalibrates your Social Contract Obligation Index (SCOI).</div>
+          <div class="lead">
+            In CRIPFCnt, responsibility is not behaviour, not compliance, and not morality - it is placement. This LMS trains your instinct through modular lessons, decision simulations, and a verified certification pathway.
+          </div>
+
+          <div class="hero-ctas">
+            {{#if user}}
+              <a class="btn btn-primary" href="/lms/course/{{#if courses.[0].slug}}{{courses.[0].slug}}{{else}}responsibility-lms{{/if}}">Start Learning</a>
+            {{else}}
+              <a class="btn btn-primary" href="/auth/google">Sign in to Start</a>
+            {{/if}}
+            <a class="btn btn-outline" href="/lms/course/{{#if courses.[0].slug}}{{courses.[0].slug}}{{else}}responsibility-lms{{/if}}#modules">Explore Courses</a>
+
+            <!-- Quiz CTAs -->
+            <a class="btn btn-ghost" href="/lms/quiz" aria-label="Take Quiz (UI)">Take a 5-question Quiz</a>
+            <a class="btn btn-ghost" href="/api/lms/quiz?count=5" target="_blank" aria-label="Fetch sample quiz via API">API Sample</a>
+
+            {{#if user}}
+              <!-- admin-only action visible to signed-in users; actual server enforces admin rights -->
+              <a class="btn btn-ghost" href="/admin/lms/import" aria-label="Load Questions (Admin)">Load Questions (Admin)</a>
+            {{/if}}
+
+          </div>
+        </div>
+
+        <aside class="hero-right" aria-hidden="false">
+          <div class="hero-card">
+            <div class="hero-card-title">{{#if courses.[0].title}}{{courses.[0].title}}{{else}}RESPONSIBILITY LMS{{/if}}</div>
+            <div class="hero-card-sub">Placement · SCOI · Decision engine · Certification</div>
+            <div style="margin-top:12px;color:var(--muted);font-size:13px">
+              Quick pathway overview:
+              <ul style="padding-left:16px;margin:8px 0 0 0;color:var(--muted);font-size:13px;line-height:1.5">
+                <li>Intro (15m)</li>
+                <li>Placement Modules (5 lessons)</li>
+                <li>Simulations & Final Exam</li>
+              </ul>
+            </div>
+            <div class="hero-card-cta">
+              <a class="btn" style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--white)" href="/lms/course/{{#if courses.[0].slug}}{{courses.[0].slug}}{{else}}responsibility-lms{{/if}}#modules">View Modules</a>
+              <a class="btn" style="background:transparent;border:1px solid rgba(212,175,55,0.12);color:var(--gold)" href="/lms/course/{{#if courses.[0].slug}}{{courses.[0].slug}}{{else}}responsibility-lms{{/if}}#cert">Certification</a>
+            </div>
+
+            <div style="margin-top:12px;color:var(--muted);font-size:13px">
+              Quick actions:
+              <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+                <a class="btn" href="/api/lms/quiz?count=5" target="_blank">API: /api/lms/quiz?count=5</a>
+                <a class="btn" href="/lms/quiz">Open Quiz UI</a>
+                {{#if user}}
+                  <a class="btn" href="/admin/lms/import">Load Questions (Admin)</a>
+                {{/if}}
+              </div>
+            </div>
+
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <!-- Two-column sections -->
+    <section class="two-col" aria-label="Main sections">
+      <!-- WHAT RESPONSIBILITY IS -->
+      <article class="section" aria-labelledby="what-resp">
+        <div class="section-left">
+          <img src="/pics/pic2.jpeg" alt="Hands signing a document - responsibility is authored" width="100%" height="auto">
+        </div>
+        <div class="section-right">
+          <h2 id="what-resp">Responsibility Is Not Behaviour. It Is Placement</h2>
+          <p>
+            In CRIPFCnt, responsibility is not a moral instruction or a performance metric - it is a structural function that determines alignment, stability and trajectory.
+            Every decision you author writes a contract into the social fabric.
+          </p>
+          <p style="margin-top:10px;color:var(--muted)"><a href="/lms/course/{{#if courses.[0].slug}}{{courses.[0].slug}}{{else}}responsibility-lms{{/if}}#modules" style="color:var(--gold)">Why Responsibility Matters →</a></p>
+        </div>
+      </article>
+
+      <!-- THE SOCIAL CONTRACT -->
+      <article class="section" aria-labelledby="social-contract">
+        <div class="section-left" style="order:2">
+          <img src="/pics/pic4.png" alt="Silhouetted group — social contract" width="100%" height="auto">
+        </div>
+        <div class="section-right" style="order:1">
+          <h2 id="social-contract">The Social Contract Equation</h2>
+          <p>
+            Your duties, non-hierarchical obligations, and the invisible expectations placed on people with visibility - responsibility here is an algorithm.
+            This LMS teaches how societal stability depends on accountable placement.
+          </p>
+          <p style="margin-top:10px;color:var(--muted)"><a href="/scoi" style="color:var(--gold)">SCOI Framework →</a></p>
+        </div>
+      </article>
+    </section>
+
+    <!-- Placement + training -->
+    <section class="two-col" aria-label="Placement and training" style="margin-top:18px">
+      <article class="section" aria-labelledby="placement">
+        <div class="section-left">
+          <img src="/pics/pic3.jpeg" alt="Compass over map - placement responsibility" width="100%" height="auto">
+        </div>
+        <div class="section-right">
+          <h2 id="placement">Responsibility Determines Direction</h2>
+          <p>
+            Every decision either aligns you with your placement or takes you off the axis. This LMS trains the instinct that protects your SCOI, sharpens interpretation, and guides purpose with precision.
+          </p>
+          <ul style="color:var(--muted);margin-top:8px">
+            <li>Recalibration</li>
+            <li>Interpretation</li>
+            <li>Duty & Boundaries</li>
+            <li>Decision-making</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="section" aria-labelledby="training">
+        <div class="section-left">
+          <img src="/pics/pic1.jpeg" alt="Learner looking at a screen with golden light" width="100%" height="auto">
+        </div>
+        <div class="section-right">
+          <h2 id="training">Training & Certification</h2>
+          <p>
+            Practical micro-tests, daily scenarios and simulated decisions that train your instinct - not your memory. Complete decision simulations and pass the final exam for a verified certificate.
+          </p>
+          <p style="margin-top:10px"><a class="btn btn-outline" href="/lms/course/{{#if courses.[0].slug}}{{courses.[0].slug}}{{else}}responsibility-lms{{/if}}#cert">Begin Certification</a></p>
+        </div>
+      </article>
+    </section>
+
+    <!-- Features and course area -->
+    <section class="course-block" aria-label="Course and modules">
+      <div class="course-header">
+        <div>
+          <div class="course-title">{{#if courses.[0].title}}{{courses.[0].title}}{{else}}RESPONSIBILITY LMS{{/if}}</div>
+          <div class="course-meta">{{#if courses.[0].shortDescription}}{{courses.[0].shortDescription}}{{else}}Placement-aligned training and certification{{/if}}</div>
+        </div>
+        <div>
+          {{#if user}}
+            <a class="btn btn-primary" href="/lms/course/{{#if courses.[0].slug}}{{courses.[0].slug}}{{else}}responsibility-lms{{/if}}">Open Course</a>
+          {{else}}
+            <a class="btn btn-primary" href="/auth/google">Sign in to open</a>
+          {{/if}}
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        {{#if courses.[0]}}
+          <div class="modules" role="list">
+            {{#each courses.[0].sections}}
+              <div class="module" role="listitem" aria-label="Module: {{this.title}}">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <h4 style="margin:0">{{this.title}}</h4>
+                  <div style="color:var(--muted);font-size:13px">{{this.lessons.length}} lessons</div>
+                </div>
+
+                <div class="lessons" aria-label="Lessons">
+                  {{#each this.lessons}}
+                    <a class="lesson-link" href="/lms/learn/{{../course._id}}/{{this._id}}">
+                      {{this.title}}
+                    </a>
+                  {{/each}}
+                </div>
+              </div>
+            {{/each}}
+          </div>
+
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+            <a class="btn" href="/lms/quiz">Attempt Sample Quiz (UI)</a>
+            <a class="btn" href="/api/lms/quiz?count=5" target="_blank">Fetch API sample</a>
+            {{#if user}}
+              <a class="btn" href="/admin/lms/import">Admin: Load Questions</a>
+            {{/if}}
+          </div>
+
+        {{else}}
+          <div style="color:var(--muted)">No seeded course found. Run the seed script or create a course in Admin. The course listing and lesson links will appear here.</div>
+        {{/if}}
+      </div>
+    </section>
+
+    <!-- final CTA -->
+    <div class="final-cta" role="region" aria-label="Call to action">
+      <div>
+        <h3>Ready to start your Responsibility Journey?</h3>
+        <p>Join professionals recalibrating their consciousness, purpose and capacity through the world’s first Placement-Aligned Responsibility LMS.</p>
+
+        <div class="footer-links">
+          <a href="/about">About</a>
+          <a href="/scoi">SCOI Framework</a>
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+        </div>
+      </div>
+      <div style="text-align:right">
+        {{#if user}}
+          <a class="btn btn-primary" href="/lms/course/{{#if courses.[0]._id}}{{courses.[0]._id}}{{else}}responsibility-lms{{/if}}">Get Started Now</a>
+        {{else}}
+          <a class="btn btn-primary" href="/auth/google">Sign in to Get Started</a>
+        {{/if}}
+      </div>
+    </div>
+
+  </div><!-- /.container -->
+</body>
+</html>

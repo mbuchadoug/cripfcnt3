@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>
+    {{#if orgSlug}}
+      {{module}} | {{orgSlug}} Quiz
+    {{else}}
+      Responsibility (demo) | Quick Quiz
+    {{/if}}
+  </title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --card:#0f0f0f;
+      --muted:#9aa3ad;
+      --gold:#D4AF37;
+      --panel:#0c0c0c;
+      --choice-bg:#0f1112;
+      --choice-border: rgba(255,255,255,0.03);
+      --selected-outline: rgba(212,175,55,0.9);
+      --correct-grad: linear-gradient(90deg,#06360b,#084d18);
+      --wrong-grad: linear-gradient(90deg,#3b0b0b,#611215);
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial}
+    .page{max-width:980px;margin:28px auto;padding:18px}
+    .card{background:linear-gradient(180deg,var(--card),#070707);padding:22px;border-radius:12px;border:1px solid rgba(255,255,255,0.02);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    h1{margin:0 0 8px 0;color:var(--gold);font-size:34px}
+    .muted{color:var(--muted);font-size:14px;margin-bottom:10px}
+
+    .q{margin-top:18px;padding:18px;border-radius:10px;background:var(--panel);border:1px solid rgba(255,255,255,0.02)}
+    .q-head{font-weight:800;font-size:18px;margin-bottom:12px}
+    .choices{display:flex;flex-direction:column;gap:10px}
+    .choice{
+      display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;background:var(--choice-bg);
+      border:1px solid var(--choice-border);cursor:pointer;transition:all .12s ease;
+      user-select:none;
+    }
+    .choice:hover{transform:translateY(-2px)}
+    .choice .badge{
+      min-width:36px;height:36px;border-radius:10px;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-weight:800;
+      color:var(--muted);font-size:14px;border:1px solid rgba(255,255,255,0.03)
+    }
+    .choice .text{flex:1;color:rgba(255,255,255,0.92)}
+    .choice.selected{outline:3px solid var(--selected-outline);background:linear-gradient(90deg, rgba(212,175,55,0.04), transparent)}
+
+    .controls{display:flex;align-items:center;gap:12px;margin-top:16px}
+    .btn{display:inline-block;padding:10px 16px;border-radius:10px;background:var(--gold);color:#000;font-weight:800;border:none;cursor:pointer}
+    .small{padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    .score{margin-top:14px;padding:12px;border-radius:8px;background:linear-gradient(90deg,#051117,#07121a);border:1px solid rgba(255,255,255,0.02)}
+    .detail-block{margin-top:10px;padding:12px;border-radius:8px;background:#0b0b0b;border:1px solid rgba(255,255,255,0.02)}
+
+    /* feedback block colours */
+    .fb-question{margin-top:12px}
+    .fb-qtitle{font-weight:700;margin-bottom:8px}
+    .fb-choice{
+      display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;margin-top:8px;
+      background:#0e0e0f;border:1px solid rgba(255,255,255,0.02);color:#ddd;
+    }
+    .fb-label{
+      min-width:28px;text-align:center;padding:6px;border-radius:6px;
+      background:rgba(0,0,0,0.25);font-weight:800;color:#ccc;
+    }
+    .fb-choice.correct{
+      background:var(--correct-grad);
+      color:#e6ffea;
+      border-color: rgba(0,150,50,0.25);
+      font-weight:700;
+    }
+    .fb-choice.wrong{
+      background:var(--wrong-grad);
+      color:#ffdada;
+      border-color: rgba(200,30,30,0.25);
+      font-weight:700;
+    }
+
+    @media (max-width:720px){
+      .page{padding:12px}
+      h1{font-size:28px}
+    }
+  </style>
+</head>
+<body
+  data-quiz-count="{{quizCount}}"
+  data-module="{{module}}"
+  data-module-key="{{moduleKey}}"
+  data-org="{{orgSlug}}"
+>
+
+  <div class="page">
+    <div class="card" role="main" aria-labelledby="quiz-title">
+      <h1 id="quiz-title">
+        {{#if orgSlug}}
+          {{module}} | {{orgSlug}} Quiz
+        {{else}}
+          Responsibility (demo) | Quick Quiz
+        {{/if}}
+      </h1>
+
+      <div class="muted">
+        {{#if orgSlug}}
+          You’re taking a module quiz for <strong>{{orgSlug}}</strong>. You’ll receive {{quizCount}} questions for this module.
+        {{else}}
+          Each quiz pulls random questions from the bank. Answer {{quizCount}} questions below and submit to see your score.
+        {{/if}}
+      </div>
+
+      <div id="quizArea" aria-live="polite"></div>
+
+      <div class="controls">
+        <button id="submitBtn" class="btn">Submit Answers</button>
+        <button id="reloadBtn" class="small" type="button">Reload Quiz</button>
+        <span id="status" class="muted" aria-atomic="true"></span>
+      </div>
+
+      <div id="result" style="display:none" class="score" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const quizArea = document.getElementById('quizArea');
+    const submitBtn = document.getElementById('submitBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+
+    const body = document.body;
+    const DEFAULT_COUNT = Number(body.dataset.quizCount || '5') || 5;
+    const MODULE_KEY = body.dataset.moduleKey || "";
+    const ORG_SLUG = body.dataset.org || "";
+
+
+    let examId = null;
+    let series = [];
+    let answers = {};
+
+    function letterForIndex(i){ return ['a','b','c','d','e'][i] || String.fromCharCode(97+i); }
+    function normalizeChoice(c){
+      if (!c) return { text: '' };
+      if (typeof c === 'string') return { text: c };
+      if (typeof c.text === 'string') return { text: c.text };
+      return { text: String(c) };
+    }
+
+    function repairBlock(q){
+      if (!q || typeof q !== 'object') return q;
+      const out = Object.assign({}, q);
+      out.choices = (out.choices || []).map(normalizeChoice);
+      return out;
+    }
+
+    function renderQuiz(list){
+      quizArea.innerHTML = '';
+      answers = {};
+      if (!Array.isArray(list) || list.length === 0) {
+        quizArea.innerHTML = '<div class="muted">No quiz questions found. Please import questions in Admin.</div>';
+        return;
+      }
+
+      list.forEach((rawQ, idx) => {
+        const q = repairBlock(rawQ);
+        const qid = q.id || q._id || 'q' + idx;
+        const choices = (q.choices || []).map(normalizeChoice);
+
+        const block = document.createElement('div');
+        block.className = 'q';
+        const qnum = idx + 1;
+        const head = document.createElement('div');
+        head.className = 'q-head';
+        const text = q.text && String(q.text).trim()
+          ? escapeHtml(q.text.trim())
+          : 'Choose the best option';
+        head.innerHTML = '<span style="font-weight:800">Q' + qnum + '.</span> ' + text;
+        block.appendChild(head);
+
+        const choicesWrap = document.createElement('div');
+        choicesWrap.className = 'choices';
+
+        if (!choices.length) {
+          const p = document.createElement('div');
+          p.className = 'muted';
+          p.textContent = 'No choices available for this question.';
+          choicesWrap.appendChild(p);
+        } else {
+          choices.forEach((c, ci) => {
+            const btn = document.createElement('div');
+            btn.className = 'choice';
+            btn.setAttribute('role','button');
+            btn.setAttribute('tabindex','0');
+            btn.dataset.qid = qid;
+            btn.dataset.index = ci;
+
+            const badge = document.createElement('div');
+            badge.className = 'badge';
+            badge.textContent = letterForIndex(ci);
+
+            const txt = document.createElement('div');
+            txt.className = 'text';
+            txt.textContent = c.text || '';
+
+            btn.appendChild(badge);
+            btn.appendChild(txt);
+
+            btn.addEventListener('click', () => {
+              choicesWrap.querySelectorAll('.choice').forEach(n => n.classList.remove('selected'));
+              btn.classList.add('selected');
+              answers[qid] = ci;
+            });
+            btn.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                btn.click();
+              }
+            });
+
+            choicesWrap.appendChild(btn);
+          });
+        }
+
+        block.appendChild(choicesWrap);
+        quizArea.appendChild(block);
+
+        q.id = qid;
+        q.choices = choices;
+        series[idx] = q;
+      });
+    }
+
+    async function loadQuiz(count){
+      status.textContent = 'Loading quiz...';
+      try {
+                const params = new URLSearchParams();
+        params.set('count', String(count || DEFAULT_COUNT));
+        if (MODULE_KEY) params.set('module', MODULE_KEY);
+        if (ORG_SLUG) params.set('org', ORG_SLUG);
+
+        const res = await fetch('/api/lms/quiz?' + params.toString(), { cache: 'no-store' });
+
+        if (!res.ok) {
+          const t = await res.text().catch(()=>null);
+          throw new Error(t || res.statusText || 'failed to fetch quiz');
+        }
+        const payload = await res.json();
+        examId = payload.examId || null;
+        const rawSeries = payload.series || payload.questions || payload.items || [];
+        if (!Array.isArray(rawSeries)) throw new Error('unexpected quiz format');
+        series = rawSeries.map(s => Object.assign({}, s));
+        renderQuiz(series);
+        status.textContent = '';
+      } catch (e) {
+        status.textContent = 'Error loading quiz: ' + (e.message || e);
+        quizArea.innerHTML = '<div class="muted">Unable to load quiz questions. Check that questions were imported and that /api/lms/quiz returns data.</div>';
+      }
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      const answered = Object.keys(answers).length;
+      if (answered < series.length) {
+        if (!confirm('You answered ' + answered + ' of ' + series.length + '. Submit anyway?')) return;
+      }
+
+      const payload = { examId, answers: [] };
+      for (const s of series) {
+        const id = s.id || s._id || null;
+        payload.answers.push({
+          questionId: id,
+          choiceIndex: (typeof answers[id] === 'number') ? answers[id] : null
+        });
+      }
+
+      submitBtn.disabled = true;
+      status.textContent = 'Submitting answers...';
+      try {
+        const res = await fetch('/api/lms/quiz/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const t = await res.json().catch(()=>null);
+          throw new Error((t && (t.error || t.message)) || 'submit failed');
+        }
+        const out = await res.json();
+        showResult(out);
+        status.textContent = '';
+      } catch (err) {
+        status.textContent = 'Error: ' + (err.message || err);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    reloadBtn.addEventListener('click', () => loadQuiz(DEFAULT_COUNT));
+
+    function showResult(resp){
+      result.style.display = 'block';
+      result.innerHTML =
+        '<div style="font-weight:800;font-size:16px">Score: ' + resp.score + ' / ' + resp.total + ' — ' + resp.percentage + '%</div>' +
+        '<div style="margin-top:8px">' +
+        (resp.passed ? '<strong style="color:#bfffb1">PASSED</strong>' : '<strong style="color:#ffb1b1">FAILED</strong>') +
+        ' (pass ' + resp.passThreshold + '%)</div>' +
+        '<div style="margin-top:10px">Detailed feedback below:</div>';
+
+      const list = document.createElement('div');
+      list.style.marginTop = '12px';
+
+      (resp.details || []).forEach(d => {
+        const q = series.find(s => (s.id || s._id) === d.questionId) || null;
+
+        const block = document.createElement('div');
+        block.className = 'fb-question';
+
+        const title = document.createElement('div');
+        title.className = 'fb-qtitle';
+        title.textContent = q ? (q.text || '') : (d.questionId || '');
+        block.appendChild(title);
+
+        const choicesContainer = document.createElement('div');
+        const srcChoices = (q && q.choices && q.choices.length)
+          ? q.choices
+          : (d.choices || []);
+
+        srcChoices.forEach((c, i) => {
+          const row = document.createElement('div');
+          row.className = 'fb-choice';
+
+          const label = document.createElement('div');
+          label.className = 'fb-label';
+          label.textContent = letterForIndex(i) + '.';
+
+          const txt = document.createElement('div');
+          txt.textContent = (typeof c === 'string') ? c : (c.text || '');
+
+          row.appendChild(label);
+          row.appendChild(txt);
+
+          if (typeof d.correctIndex === 'number' && i === d.correctIndex) {
+            row.classList.add('correct');
+          }
+          if (typeof d.yourIndex === 'number' && i === d.yourIndex && !d.correct) {
+            row.classList.add('wrong');
+          }
+
+          choicesContainer.appendChild(row);
+        });
+
+        block.appendChild(choicesContainer);
+        list.appendChild(block);
+      });
+
+      result.appendChild(list);
+      result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function escapeHtml(s){
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    loadQuiz(DEFAULT_COUNT);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{title}}</title>
+
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --sidebar-bg:#0b2545;
+      --sidebar-hover:#133b63;
+      --sidebar-text:#e9f1ff;
+      --accent:#0b63d6;
+      --bg:#f5f7fa;
+      --card-bg:#ffffff;
+      --muted:#6b7280;
+      --danger:#e24b4b;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+      background:var(--bg);
+      color:#0b2545;
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width:245px;
+      background:var(--sidebar-bg);
+      color:var(--sidebar-text);
+      padding:22px 0;
+      position:fixed;
+      left:0;top:0;bottom:0;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .sidebar .brand{
+      text-align:center;
+      margin-bottom:6px;
+      padding-bottom:10px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar .brand h2{margin:0;font-size:1.2rem}
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      padding:8px 6px;
+    }
+    .nav a{
+      color:var(--sidebar-text);
+      text-decoration:none;
+      padding:12px 18px;
+      border-radius:8px;
+      display:block;
+      font-size:0.95rem;
+    }
+    .nav a:hover{background:var(--sidebar-hover)}
+    .nav .spacer{flex:1}
+
+    /* Main content */
+    .main{
+      margin-left:245px;
+      padding:28px;
+      width:calc(100% - 245px);
+    }
+
+    .topbar{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:16px;
+    }
+    h1{margin:0 0 6px 0;font-size:1.4rem}
+    .card{
+      background:var(--card-bg);
+      padding:14px;
+      border-radius:10px;
+      box-shadow:0 8px 20px rgba(11,37,69,0.04);
+      border:1px solid rgba(15,23,42,0.03);
+    }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      width:100%;
+    }
+
+    .controls form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input[type="text"], select, input[type="number"]{
+      padding:8px 10px;
+      border:1px solid #d1d9e6;
+      border-radius:8px;
+      font-size:0.95rem;
+    }
+    .btn{
+      padding:8px 12px;
+      background:var(--accent);
+      color:#fff;
+      border-radius:8px;
+      border:none;
+      text-decoration:none;
+      cursor:pointer;
+    }
+    .btn.secondary{
+      background:#fff;color:var(--accent);border:1px solid #d1d9e6;
+    }
+    .meta{
+      margin-left:auto;
+      color:var(--muted);
+      font-size:0.92rem;
+    }
+
+    /* Table */
+    .table-wrap{
+      margin-top:16px;
+      overflow:auto;
+      border-radius:10px;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:800px;
+      background:#fff;
+    }
+    thead th{
+      background:#f3f8ff;
+      padding:10px 12px;
+      text-align:left;
+      font-size:0.78rem;
+      text-transform:uppercase;
+      color:#475569;
+      letter-spacing:0.03em;
+      border-bottom:1px solid #e6eef8;
+    }
+    tbody td{
+      padding:10px 12px;
+      border-bottom:1px solid #f0f4fb;
+      vertical-align:middle;
+      font-size:0.95rem;
+    }
+    tbody tr:hover{background:#fcfeff}
+
+    .monospace{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:0.9rem;color:#334155}
+    .muted{color:var(--muted);font-size:0.92rem}
+
+    .actions{white-space:nowrap}
+    .delete-btn{
+      background:var(--danger);
+      color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;
+    }
+
+    /* pager */
+    .pager{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-top:14px;
+      color:var(--muted);
+    }
+    .pager a{color:var(--accent);text-decoration:none}
+
+    /* responsive */
+    @media (max-width:920px){
+      .sidebar{display:none}
+      .main{margin-left:0;width:100%;padding:16px}
+      table{min-width:720px}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" role="navigation" aria-label="Admin sidebar">
+    <div class="brand">
+      <h2>Admin Panel</h2>
+      <div class="muted" style="font-size:0.85rem;margin-top:6px">CRIPFCnt</div>
+    </div>
+
+    <nav class="nav">
+      <a href="/admin/users">👥 Users</a>
+      <a href="/admin/visits">📊 Visit Stats</a>
+      <a href="/admin/unique-visitors">🧍 Unique Visitors</a>
+      <a href="/admin/visitors-live">🔴 Live Logs</a>
+
+      <div class="spacer"></div>
+
+      <a href="/audit">📘 SCOI Audit</a>
+      <a href="/auth/logout" style="color:#ffdede">🚪 Logout</a>
+    </nav>
+  </div>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div style="flex:1">
+        <h1>{{title}}</h1>
+        <div class="muted">Manage Google users who signed into the system</div>
+      </div>
+
+      <div class="meta">Total: <strong>{{total}}</strong> users</div>
+    </div>
+
+    <section class="card">
+      <div class="controls">
+        <form method="get" action="/admin/users" style="align-items:center">
+          <input type="text" name="q" placeholder="Search name or email" value="{{q}}" />
+          <button class="btn" type="submit">Search</button>
+
+          <a class="btn secondary" href="/admin/users?format=csv{{#if q}}&q={{q}}{{/if}}" style="display:inline-flex;align-items:center">⬇ Download CSV</a>
+        </form>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:22%">Name</th>
+              <th style="width:20%">Email</th>
+              <th style="width:10%">Provider</th>
+              <th style="width:18%">Google ID</th>
+              <th style="width:10%">Created</th>
+              <th style="width:10%">Last login</th>
+              <th style="width:10%">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each users}}
+              <tr>
+                <td>
+                  {{#if displayName}}
+                    {{displayName}}
+                  {{else}}
+                    {{firstName}} {{lastName}}
+                  {{/if}}
+                </td>
+
+                <td class="muted">{{email}}</td>
+                <td>{{provider}}</td>
+                <td class="monospace">{{googleId}}</td>
+
+                <td class="muted">{{#if createdAt}}{{createdAt}}{{else}}-{{/if}}</td>
+                <td class="muted">{{#if lastLogin}}{{lastLogin}}{{else}}-{{/if}}</td>
+
+                <td class="actions">
+                  <form method="post" action="/admin/users/{{_id}}/delete" style="display:inline" onsubmit="return confirmDelete(this);">
+                    <button type="submit" class="delete-btn" title="Delete user">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div>
+          {{#if prev}}
+            <a href="/admin/users?page={{prev}}{{#if q}}&q={{q}}{{/if}}">← Prev</a>
+          {{/if}}
+
+          {{#if next}}
+            {{#if prev}} &nbsp; | &nbsp; {{/if}}
+            <a href="/admin/users?page={{next}}{{#if q}}&q={{q}}{{/if}}">Next →</a>
+          {{/if}}
+        </div>
+
+        <div style="margin-left:auto" class="muted">Page {{page}} / {{pages}}</div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    function confirmDelete(form) {
+      const row = form.closest('tr');
+      const emailCell = row ? row.querySelector('td:nth-child(2)') : null;
+      const email = emailCell ? emailCell.textContent.trim() : '';
+      return confirm('Permanently delete user ' + (email || '') + '? This action cannot be undone.');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>{{org.name}} — Quiz</title></head>
+<body>
+  {{> navbar}}
+  <main>
+    <h1>{{org.name}} | Quiz</h1>
+
+    <label>Module:
+      <select id="moduleSelect">
+        {{#each modules}}<option value="{{this}}">{{this}}</option>{{/each}}
+        <option value="general" selected>General</option>
+      </select>
+    </label>
+    <button id="startBtn">Start Quiz</button>
+
+    <div id="quizContainer"></div>
+    <button id="submitBtn" style="display:none" onclick="submitOrgQuiz()">Submit</button>
+  </main>
+
+<script>
+const ORG_SLUG = "{{org.slug}}";
+
+document.getElementById('startBtn').addEventListener('click', start);
+
+async function start() {
+  const module = document.getElementById('moduleSelect').value || 'general';
+  const resp = await fetch(`/api/org/${encodeURIComponent(ORG_SLUG)}/quiz/generate`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ module, count: 20 })
+  });
+  const data = await resp.json();
+  if (!resp.ok) return alert(data.error || 'could not start');
+  window.currentExam = data;
+  // render quiz UI (same rendering used for individual view)
+  renderSeries(data.series);
+  document.getElementById('submitBtn').style.display = 'inline-block';
+}
+
+function renderSeries(series) {
+  const container = document.getElementById('quizContainer');
+  container.innerHTML = '';
+  series.forEach((q, i) => {
+    const qDiv = document.createElement('div');
+    qDiv.innerHTML = `<h4>${i+1}. ${q.text}</h4>` + q.choices.map((c, idx) =>
+      `<label><input type="radio" name="q${i}" value="${idx}"> ${c.text}</label><br>`
+    ).join('');
+    container.appendChild(qDiv);
+  });
+}
+
+async function submitOrgQuiz() {
+  const exam = window.currentExam;
+  if (!exam) return alert('No exam');
+  const answers = exam.series.map((q, i) => {
+    const radios = document.getElementsByName('q'+i);
+    let chosen = null;
+    for (const r of radios) if (r.checked) { chosen = Number(r.value); break; }
+    return { questionId: q.questionId, choiceIndex: chosen };
+  });
+  const resp = await fetch(`/api/org/${encodeURIComponent(ORG_SLUG)}/quiz/submit`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ examId: exam.examId, answers })
+  });
+  const result = await resp.json();
+  if (!resp.ok) return alert(result.error || 'submit failed');
+  alert(`Score: ${result.score}/${result.total} (${result.percentage}%)`);
+}
+</script>
+</body>
+</html>

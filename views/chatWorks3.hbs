@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f5f7fa;
+    }
+
+    h1 {
+      color: #003366;
+      font-weight: 800;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #333;
+    }
+
+    input, button {
+      padding: 8px;
+      margin: 4px 0;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #0066cc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s ease-in-out;
+    }
+
+    button:hover {
+      background: #004c99;
+    }
+
+    #output {
+      white-space: pre-wrap; /* preserve line breaks */
+      font-family: "Courier New", monospace; /* typewriter style */
+      line-height: 1.5;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      margin-top: 1.5rem;
+      min-height: 200px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .highlight-num {
+      color: #0d6efd;
+      font-weight: bold;
+    }
+
+    .highlight-key {
+      color: #198754;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>{{title}}</h1>
+  <p>{{message}}</p>
+
+  <input id="entity" type="text" placeholder="e.g., Lafarge">
+  <button onclick="startChat()">Analyze</button>
+
+  <div id="output"></div>
+
+<script>
+async function startChat() {
+  const entity = document.getElementById("entity").value.trim();
+  if (!entity) return alert("Please enter a company or entity name.");
+
+  const output = document.getElementById("output");
+  output.textContent = `🔍 Running CRIPFCnt SCOI Audit for: ${entity}...\n\n`;
+
+  try {
+    const res = await fetch("/api/chat-stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entity })
+    });
+
+    if (!res.body) throw new Error("No response stream from server.");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let displayBuffer = "";
+
+    // Helper: flush text nicely to output
+    function flushText(force = false) {
+      if (displayBuffer.length > 100 || force) {
+        output.textContent += displayBuffer;
+        displayBuffer = "";
+        output.scrollTop = output.scrollHeight;
+      }
+    }
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      let chunk = decoder.decode(value, { stream: true });
+
+      // Remove "data:" prefixes & control characters
+      chunk = chunk.replace(/^data:\s*/gm, "").replace(/\u0000/g, "");
+
+      // Buffer small chunks together to avoid letter-by-letter render
+      buffer += chunk;
+
+      // When we have a full sentence or newline, flush to output
+      const sentences = buffer.split(/(?<=[.:\n])\s+/);
+      buffer = sentences.pop() || "";
+
+      for (const s of sentences) {
+        displayBuffer += s.trim() + " ";
+        flushText();
+      }
+    }
+
+    if (buffer.trim()) {
+      displayBuffer += buffer.trim();
+      flushText(true);
+    }
+
+    // Format output for readability
+    let html = output.textContent
+      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+      .replace(/(\d+(\.\d+)?\s*\/\s*10)/g, "<span class='highlight-num'>$1</span>")
+      .replace(/SCOI\s*=?\s*[\d.]+/gi, "<span class='highlight-key'>$&</span>")
+      .replace(/ERF\s*:?[\s\d.]+/gi, "<span class='highlight-key'>$&</span>")
+      .replace(/(\d️⃣|[1-6]️⃣)/g, "<br><b style='color:#003366;'>$1</b> ") // stage markers
+      .replace(/(Visibility|Contribution|Calculation|Adjustment|Commentary)/gi, "<b style='color:#003366;'>$1</b>")
+      .replace(/\n{2,}/g, "\n");
+
+    output.innerHTML = html;
+
+  } catch (err) {
+    output.innerHTML = `❌ Error: ${err.message}`;
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f5f7fa;
+    }
+
+    h1 {
+      color: #003366;
+      font-weight: 800;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #333;
+    }
+
+    input, button {
+      padding: 8px;
+      margin: 4px 0;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #0066cc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s ease-in-out;
+    }
+
+    button:hover {
+      background: #004c99;
+    }
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  margin: 1rem 0;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.card-header {
+  font-weight: 700;
+  color: #003366;
+  font-size: 15px;
+  text-transform: uppercase;
+  border-bottom: 2px solid #00336630;
+  padding-bottom: 6px;
+  margin-bottom: 0.6rem;
+}
+
+#output {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 1rem;
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  color: #222;
+  line-height: 1.7;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+
+  </style>
+</head>
+
+<body>
+  <h1>{{title}}</h1>
+  <p>{{message}}</p>
+
+  <input id="entity" type="text" placeholder="e.g., Lafarge">
+  <button onclick="startChat()">Analyze</button>
+
+  <div id="output"></div>
+<script>
+async function startChat() {
+  const entity = document.getElementById("entity").value.trim();
+  if (!entity) return alert("Enter a company name");
+
+  const output = document.getElementById("output");
+  output.textContent = "🔍 Running CRIPFCnt SCOI Audit for: " + entity + "...";
+
+  try {
+    const res = await fetch("/api/chat-stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entity })
+    });
+
+    if (!res.body) throw new Error("No response stream from server");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let rawText = "";
+
+    // 🌀 Collect full response as text
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rawText += decoder.decode(value, { stream: true });
+      output.textContent = rawText; // live update while streaming
+    }
+
+    // 🧹 Clean after full stream
+    let clean = rawText
+      .replace(/data:\s*/g, "")
+      .replace(/\r/g, "")
+      .replace(/\n{2,}/g, "\n")
+      .replace(/\s{2,}/g, " ");
+
+    // ✅ Preserve decimal points
+    clean = clean.replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
+
+    // ✅ Format into HTML cards
+    let html = clean
+      // Bold **text**
+      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+      // Highlight numbers like 7 / 10
+      .replace(/(\d+(\.\d+)?\s*\/\s*\d+)/g, "<span class='highlight-num'>$1</span>")
+      // Highlight key ratios (SCOI, ERF, etc.)
+      .replace(/\b(SCOI|ERF)\b\s*[=:]?\s*([\d.]+)/gi, "<span class='highlight-key'>$1 = $2</span>")
+      // Break into sections (handles 1️⃣, 2️⃣, etc.)
+      .replace(/(?:^|\s)([1-6])\s*[️⃣]*\s*[—\-–]?\s*(Visibility|Contribution|SCOI|Global|Adjusted|Final|Environment|Commentary)/gi,
+        "</div><br><div class='card'><div class='card-header'>SECTION $1 — <b>$2</b></div><hr>"
+      )
+      // Remove the first closing div if added
+      .replace(/^<\/div><br>/, "")
+      // Add final closing div
+      + "</div>";
+
+    output.innerHTML = html.trim();
+    output.scrollTop = output.scrollHeight;
+
+  } catch (err) {
+    output.textContent += "\n❌ Error: " + err.message;
+  }
+}
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CRIPFCnt SCOI Audit</title>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background: #f5f7fa;
+      color: #222;
+      margin: 0;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+    }
+    .input-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    input {
+      flex: 1;
+      padding: 0.6rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.6rem 1.2rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1e4fd8;
+    }
+    .output {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+      padding: 1rem 1.5rem;
+      white-space: pre-wrap;
+      font-family: "Courier New", monospace;
+      line-height: 1.5;
+    }
+    .highlight {
+      color: #2563eb;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Enter an organization or entity name to perform a live CRIPFCnt audit powered by OpenAI.</h1>
+
+    <div class="input-row">
+      <input id="companyInput" type="text" placeholder="e.g. Econet" />
+      <button id="analyzeBtn">Analyze</button>
+    </div>
+
+    <div id="output" class="output"></div>
+  </div>
+
+  <script>
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const companyInput = document.getElementById("companyInput");
+    const outputDiv = document.getElementById("output");
+
+    analyzeBtn.addEventListener("click", async () => {
+      const company = companyInput.value.trim();
+      if (!company) return alert("Please enter a company name");
+
+      outputDiv.textContent = `🔍 Running CRIPFCnt SCOI Audit for: ${company}...\n\n`;
+
+      const response = await fetch(`/analyze?company=${encodeURIComponent(company)}`);
+
+      if (!response.body) {
+        outputDiv.textContent = "Error: No response stream.";
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let displayBuffer = "";
+
+      function flushText() {
+        outputDiv.textContent = displayBuffer;
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        let chunk = decoder.decode(value, { stream: true });
+
+        // 🔧 Clean and normalize streamed tokens
+        chunk = chunk
+          .replace(/^data:\s*/gm, "")
+          .replace(/\u0000/g, "")
+          .replace(/\r/g, "")
+          .replace(/(\s){2,}/g, " ")
+          .replace(/\s([.,;:])/g, "$1")
+          .replace(/(\w)\s+(\w)/g, "$1 $2")
+          .replace(/S\s*C\s*O\s*I/gi, "SCOI")
+          .replace(/C\s*R\s*I\s*P\s*F\s*C\s*n\s*t/gi, "CRIPFCnt");
+
+        buffer += chunk;
+
+        // flush whole sentences or sections
+        const sentences = buffer.split(/(?<=[.:\n])\s+/);
+        buffer = sentences.pop() || "";
+
+        for (const s of sentences) {
+          displayBuffer += s.trim() + " ";
+          flushText();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

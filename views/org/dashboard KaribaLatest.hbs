@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{org.name}} | Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{
+      font-family:system-ui, -apple-system, "Segoe UI", Arial;
+      margin:20px;
+    }
+    h1{font-size:32px;margin-bottom:8px}
+    h2{margin-top:24px}
+    .module-block,
+    .quiz-block{
+      margin-top:10px;
+      padding:10px 14px;
+      border-radius:8px;
+      border:1px solid #ddd;
+      max-width:640px;
+    }
+    .quiz-status{font-size:14px;color:#555}
+    .links-row a + a{margin-left:12px}
+  </style>
+</head>
+<body>
+  {{> navbar}}
+
+  <main>
+    <h1>{{org.name}} | Dashboard</h1>
+    <p>You are a <strong>{{membership.role}}</strong> in this organization.</p>
+
+    <h2>Modules</h2>
+    {{#if modules.length}}
+      {{#each modules}}
+        <div class="module-block">
+          <div><strong>{{this.title}}</strong></div>
+          <div>Module slug: <code>{{this.slug}}</code></div>
+
+          <div class="links-row" style="margin-top:6px;">
+            <a href="/org/{{../org.slug}}/modules/{{this.slug}}">
+              View learning material
+            </a>
+
+            {{!-- ORG QUIZ (20 questions per attempt) --}}
+            <a href="/lms/quiz?module={{this.slug}}&org={{../org.slug}}">
+              Start a new 20-question quiz for this module
+            </a>
+          </div>
+        </div>
+      {{/each}}
+    {{else}}
+      <p>No modules have been configured yet.</p>
+    {{/if}}
+
+    <h2>Assigned quizzes</h2>
+    {{#if quizzesByModule}}
+      {{#each quizzesByModule}}
+        <h3>{{@key}}</h3>
+        {{#each this}}
+          <div class="quiz-block">
+            <div>
+                      <strong>Assigned quiz:</strong> {{examId}}
+              &nbsp;|&nbsp;
+              <a href="{{openUrl}}">
+                Open assigned 20-question quiz
+              </a>
+
+            </div>
+            <div class="quiz-status">
+              Status: {{status}}
+              {{#if expiresAt}}
+                &nbsp;|&nbsp; Expires: {{expiresAt}}
+              {{/if}}
+            </div>
+          </div>
+        {{/each}}
+      {{/each}}
+    {{else}}
+      <p>No quizzes have been assigned to you yet.</p>
+    {{/if}}
+  </main>
+</body>
+</html>

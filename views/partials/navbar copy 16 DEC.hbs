@@ -1,0 +1,37 @@
+{{!-- views/partials/navbar.hbs --}}
+<nav style="background:#fff;border-bottom:1px solid #eef4fb;position:sticky;top:0;z-index:120;padding:10px 20px;backdrop-filter:blur(6px)">
+  <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:14px">
+      <a href="/" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:#07203a">
+        <div style="width:44px;height:44px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#D4AF37,#b58f2a);font-weight:900;color:#000">C</div>
+        <div>
+          <div style="font-weight:800;line-height:1">CRIPFCnt</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">Responsibility LMS</div>
+        </div>
+      </a>
+
+      <div style="display:flex;gap:8px;margin-left:18px">
+        <a href="/lms" style="text-decoration:none;color:#07203a;padding:8px 10px;border-radius:8px;font-weight:700">LMS</a>
+        <a href="/audit" style="text-decoration:none;color:#07203a;padding:8px 10px;border-radius:8px;font-weight:700">SCOI</a>
+        <a href="/about" style="text-decoration:none;color:#07203a;padding:8px 10px;border-radius:8px;font-weight:700">About</a>
+        <a href="/contact" style="text-decoration:none;color:#07203a;padding:8px 10px;border-radius:8px;font-weight:700">Contact</a>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px">
+      {{#if user}}
+        <div style="display:flex;align-items:center;gap:10px">
+          <img src="{{user.photo}}" alt="avatar" onerror="this.style.display='none'" style="width:36px;height:36px;border-radius:999px;object-fit:cover;border:2px solid #eef4fb">
+          <div style="text-align:right">
+            <div style="font-weight:700;color:#07203a;font-size:13px">{{user.firstName}}{{#if user.lastName}} {{user.lastName}}{{/if}}</div>
+            <div style="font-size:12px;color:#6b7280">{{user.email}}</div>
+          </div>
+        </div>
+        <a href="/auth/logout" style="text-decoration:none;padding:8px 10px;border-radius:8px;border:1px solid #eef4fb;color:#07203a;font-weight:700">Sign out</a>
+        <a href="/admin" style="text-decoration:none;padding:8px 10px;border-radius:8px;background:#0b63d6;color:#fff;font-weight:700">Admin</a>
+      {{else}}
+        <a href="/auth/google" style="text-decoration:none;padding:8px 12px;border-radius:8px;background:#D4AF37;color:#000;font-weight:800">Sign in</a>
+      {{/if}}
+    </div>
+  </div>
+</nav>

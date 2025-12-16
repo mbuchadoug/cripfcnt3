@@ -1,0 +1,59 @@
+{{!-- views/admin/orgs_index.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Organizations | Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  {{> navbar}}
+
+  <main style="max-width: 960px; margin: 2rem auto;">
+    <h1>Organizations (Admin)</h1>
+
+    {{#if orgs.length}}
+      <table border="1" cellpadding="8" cellspacing="0" width="100%">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each orgs}}
+            <tr>
+              <td>{{this.name}}</td>
+              <td><code>{{this.slug}}</code></td>
+              <td>{{this.createdAt}}</td>
+              <td>
+                {{!-- 1. System admin manage org (members, invites, modules, etc.) --}}
+                <a href="/admin/orgs/{{this.slug}}/manage">Manage org</a>
+
+                {{!-- 2. System admin view/manage modules for this org --}}
+                &nbsp;|&nbsp;
+                <a href="/admin/orgs/{{this.slug}}/modules">Modules</a>
+
+                {{!-- 3. System admin add a new module for this org --}}
+                &nbsp;|&nbsp;
+                <a href="/admin/orgs/{{this.slug}}/modules/new">Add module</a>
+
+                {{!-- 4. Jump into the org's own dashboard (what employees see) --}}
+                &nbsp;|&nbsp;
+                <a href="/org/{{this.slug}}/dashboard" target="_blank">
+                  View org dashboard
+                </a>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    {{else}}
+      <p>No organizations found yet.</p>
+    {{/if}}
+
+  </main>
+</body>
+</html>

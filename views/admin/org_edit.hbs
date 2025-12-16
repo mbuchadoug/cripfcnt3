@@ -1,0 +1,12 @@
+<h1>Edit Organization</h1>
+
+<form method="post" action="/admin/orgs/{{org.slug}}/edit">
+
+  <label>Name</label><br>
+  <input name="name" value="{{org.name}}" required><br><br>
+
+  <label>Description</label><br>
+  <textarea name="description">{{org.description}}</textarea><br><br>
+
+  <button type="submit">Save Changes</button>
+</form>

@@ -1,0 +1,61 @@
+{{!-- views/admin/lms_import_summary.hbs --}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Import summary</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,system-ui,Arial;margin:18px;background:#fff;color:#111}
+    .wrap{max-width:980px;margin:0 auto}
+    h1{font-size:28px}
+    .meta{color:#555;margin-bottom:8px}
+    .block{background:#fafafa;border:1px solid #eee;padding:12px;border-radius:6px;margin-bottom:10px;white-space:pre-wrap}
+    .ok{color:green;font-weight:700}
+    .warn{color:orange}
+    .err{color:#900}
+    .actions{margin-top:14px}
+    a.btn{display:inline-block;padding:8px 12px;background:#0b6fb7;color:#fff;border-radius:6px;text-decoration:none;margin-right:8px}
+    .note{color:#666;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Import summary</h1>
+
+    <p class="meta">Detected <strong>{{detected}}</strong> question block{{#if detected}}s{{/if}} (split on blank lines).</p>
+
+    {{#if savedToDb}}
+      <p class="ok">Saved to DB: inserted {{inserted}} questions.</p>
+    {{else}}
+      {{#if dbErr}}
+        <p class="err">Database insert error: {{dbErr}}</p>
+      {{else}}
+        {{#if dbSkipped}}
+          <p class="warn">DB insert skipped: Question model not found or DB not configured. Parsed blocks were saved to <code>/mnt/data/responsibilityQuiz.txt</code>.</p>
+        {{else}}
+          <p class="note">Parsed but not saved to DB. If you want to persist to DB, re-run the import with the "Also save parsed questions to DB" checkbox checked.</p>
+        {{/if}}
+      {{/if}}
+    {{/if}}
+
+    <hr/>
+
+    <h3>Preview (first 20 blocks)</h3>
+
+    {{#each blocks}}
+      <div class="block">
+        <pre>{{this.rawBlock}}</pre>
+      </div>
+    {{/each}}
+
+    <div class="actions">
+      <a class="btn" href="/admin/lms/import">Back</a>
+      <a class="btn" href="/lms/quiz">Open Quiz UI</a>
+      <a class="btn" href="/admin/lms/questions">Manage Questions</a>
+    </div>
+
+    <p class="note">The fallback file was written to <code>/mnt/data/responsibilityQuiz.txt</code> so the quiz API can read it (if DB insert wasn't used).</p>
+  </div>
+</body>
+</html>
